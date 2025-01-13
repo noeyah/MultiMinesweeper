@@ -6,9 +6,12 @@ internal class Program
 	{
 		Console.WriteLine("Multi Minesweeper Server");
 
+		var ip = "127.0.0.1";
+		var port = 7777;
+
 		var mainServer = new MainServer();
 		mainServer.Init(100, 4096);
-		mainServer.Start("127.0.0.1", 7777, 5);
+		mainServer.Start(ip, port, 5);
 
 		while (true)
 		{
