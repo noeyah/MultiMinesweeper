@@ -61,6 +61,23 @@ internal class Server : NetworkService
 - 게임 로직이 있는 실제 게임 서버
 - 클라이언트로부터 받은 패킷을 Channel을 사용하여 순차적으로 처리
 - 패킷이 없을 때는 Channel을 사용해서 대기 상태로 전환되어 자원을 최소한으로 사용
+```cs
+internal class PacketProcessor
+{
+	private Channel<PacketData> _channel = Channel.CreateUnbounded<PacketData>();
+
+	private async Task ProcessAsync()
+	{
+		while (await _channel.Reader.WaitToReadAsync())
+		{
+			while (_channel.Reader.TryRead(out var packetData))
+			{
+				// packet 처리
+			}
+		}
+	}
+}
+```
 
 
 ### Packet
