@@ -11,18 +11,33 @@
 
 ![mm_1](https://github.com/user-attachments/assets/ea41c527-5acc-46cb-9434-992c32bc4ee6)
 
+### 게임 룰
+- 여러명이서 하나의 지뢰찾기를 실시간으로 진행
+- 게임이 끝나야지만 초기화 가능
+- 중간에 접속한 유저도 참여 가능
+- 다른 유저의 플래그 취소 가능
+- 한 명이라도 지뢰을 누르면 GAME OVER
 
 
-## 프로젝트 설명
+## 각 프로젝트 설명
+
+ServerCore, Server, Packet, TestClient 4개의 프로젝트로 구성
 
 ### ServerCore
 - 소켓 통신 관리하는 IOCP 기반 라이브러리
 - NetworkService를 상속 받아서 이벤트 처리
+- SocketAsyncEventArgsPool : SocketAsyncEventArgs을 풀링해서 재사용
+- SessionManager : SessionID를 부여하고 관리
 ```cs
 public abstract class NetworkService
 {
+	// poolCount : SAEA 초기 풀링 개수. 초과시 더 생성
 	public virtual void Init(int poolCount, int bufferSize) {}
 	
+	// 연결 시도/수락 핸들러에 등록 필요
+	protected void Connected(Socket socket){}
+	
+	// 구현 필요
 	protected abstract void OnReceiveData(int sessionID, ArraySegment<byte> data);
 	protected abstract void OnSendCompleted(int sessionID, int bytesTransferred, IList<ArraySegment<byte>> bufferList);
 	protected abstract void OnConnected(int sessionID);
@@ -41,7 +56,7 @@ internal class MainServer : NetworkService
 
 		_listener.AcceptHandler = Connected;
 	}
-	// 구현 필요
+
 	protected override void OnConnected(int sessionID) {}
 	protected override void OnDisconnected(int sessionID) {}
 	protected override void OnReceiveData(int sessionID, ArraySegment<byte> data) {}
@@ -53,14 +68,19 @@ internal class MainServer : NetworkService
 internal class Server : NetworkService
 {
 	private Connector _connector = new Connector();
-	// 추상 메소드 구현 필요
+
+	public override void Init(int poolCount, int bufferSize)
+	{
+		base.Init(poolCount, bufferSize);
+		_connector.ConnectedHandler = Connected;
+	}
 }
 ```
 
 ### Server
 - 게임 로직이 있는 실제 게임 서버
-- 클라이언트로부터 받은 패킷을 Channel을 사용하여 순차적으로 처리
-- 패킷이 없을 때는 Channel을 사용해서 대기 상태로 전환되어 자원을 최소한으로 사용
+- 클라이언트로부터 받은 패킷은 PacketProcessor에서 순차적으로 처리
+- Channel을 사용해서 패킷이 없을 때는 대기 상태로 전환되어 자원을 최소한으로 사용
 ```cs
 internal class PacketProcessor
 {
@@ -83,6 +103,18 @@ internal class PacketProcessor
 ### Packet
 - 서버, 클라이언트 공용으로 사용하는 패킷 라이브러리
 - MessagePack 사용
+- 패킷은 IPacket 인터페이스 구현하고, PacketID 정의
+```cs
+[MessagePackObject]
+public class LoginReq : IPacket
+{
+	[Key(0)]
+	public string Name;
+
+	[IgnoreMember]
+	public PACKET_ID PacketID => PACKET_ID.LoginReq;
+}
+```
 
 ### TestClient
 - 윈폼 기반 테스트용 클라이언트
