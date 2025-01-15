@@ -18,7 +18,7 @@
 - 다른 유저의 플래그 취소 가능
 - 한 명이라도 지뢰을 누르면 GAME OVER
 
-
+---
 ## 각 프로젝트 설명
 
 ServerCore, Server, Packet, TestClient 4개의 프로젝트로 구성
