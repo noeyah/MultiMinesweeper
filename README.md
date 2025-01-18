@@ -24,6 +24,7 @@ IOCP 기반 소켓 통신 라이브러리부터 게임 서버까지 구현한 �
 ## 각 프로젝트 설명
 
 게임 서버 프로젝트 : ServerCore, Server, Packet
+
 테스트용 프로젝트 : TestClient, DummyClient
 
 ### ServerCore
