@@ -5,7 +5,7 @@ namespace ServerCore;
 public abstract class NetworkService
 {
 	private SessionManager _sessionManager;
-	
+
 	private SocketAsyncEventArgsPool _argsPool;
 
 	#region handler

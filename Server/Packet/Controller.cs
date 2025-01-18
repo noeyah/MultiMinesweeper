@@ -9,7 +9,7 @@ internal partial class PacketHandler
 {
 	private void OnLoginReq(PacketData packetData)
 	{
-		var req = GetPacket<LoginReq>(packetData);
+        var req = GetPacket<LoginReq>(packetData);
 		if ( req is null )
 		{
 			return;
@@ -31,7 +31,9 @@ internal partial class PacketHandler
 			return;
 		}
 
-		var myPlayer = _userMgr.GetPlayer(packetData.SessionID);
+        Console.WriteLine($"참가 - {packetData.SessionID}");
+
+        var myPlayer = _userMgr.GetPlayer(packetData.SessionID);
 		var room = _gameMgr.GetGameRoom();
 
 		res.ErrorCode = ERROR_CODE.OK;
@@ -59,9 +61,9 @@ internal partial class PacketHandler
 		var res = new OpenRes();
 		var room = _gameMgr.GetGameRoom();
 
-		if (!room.CheckIndex(req.row, req.col))
+		if (room.InvalidOpen(req.row, req.col))
 		{
-			res.ErrorCode = ERROR_CODE.Fail_Cell_Index;
+			res.ErrorCode = ERROR_CODE.Fail_Invalid_Open;
 			SendPacket(packetData.SessionID, res);
 			return;
 		}
@@ -83,7 +85,7 @@ internal partial class PacketHandler
 
 		if ( room.GameOver )
 		{
-			Console.WriteLine($"GameOver - {room.Win}");
+			Console.WriteLine($"GameOver - win? {room.Win}");
 			GameOverNoti(updateCells, room);
 		}
 		else

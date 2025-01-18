@@ -1,17 +1,18 @@
-﻿namespace Server;
+﻿using Packet;
+
+namespace DummyClient;
 
 internal class Program
 {
 	static void Main(string[] args)
 	{
-		Console.WriteLine("Multi Minesweeper Server");
-
 		var ip = "127.0.0.1";
 		var port = 7777;
 
-		var mainServer = new MainServer();
-		mainServer.Init(200, 4096);
-		mainServer.Start(ip, port, 100);
+		Server server = new Server();
+		server.Init(200, 4096);
+		server.Connect(ip, port, 100);
+
 
 		while (true)
 		{
@@ -22,12 +23,9 @@ internal class Program
 				var key = Console.ReadKey(true);
 				if (key.KeyChar == 'x')
 				{
-					Console.WriteLine("Stop Server");
-					//
-
+					Console.WriteLine("Stop");
 					break;
 				}
-
 			}
 		}
 	}

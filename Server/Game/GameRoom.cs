@@ -61,6 +61,21 @@ internal class GameRoom
 		return _board.FlagCell(row, col, flag);
 	}
 
+	public bool InvalidOpen(int row, int col)
+	{
+		if (!CheckIndex(row, col))
+		{
+			return true;
+		}
+
+		if (_board.GetCellState(row, col) != CELL_STATE.CLOSE)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
 	#region 패킷용
 	public GameInfo GetGameInfo()
 	{

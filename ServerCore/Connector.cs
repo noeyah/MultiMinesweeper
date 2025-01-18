@@ -36,7 +36,6 @@ public class Connector
 		{
 			var socket = args.ConnectSocket;
 			ConnectedHandler(socket);
-			Console.WriteLine($"서버 연결 - {args.ConnectSocket.RemoteEndPoint}");
 		}
 	}
 }

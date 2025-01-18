@@ -55,7 +55,7 @@ public class Session
 
 	public void Disconnect()
 	{
-		if ( Interlocked.Exchange(ref _disconnected, 1) == 1 )
+        if ( Interlocked.Exchange(ref _disconnected, 1) == 1 )
 		{
 			return;
 		}
@@ -167,7 +167,7 @@ public class Session
 			}
 			else
 			{
-				Disconnect();
+                Disconnect();
 			}
 		}
 	}
@@ -197,10 +197,10 @@ public class Session
 			if ( _recvBuffer.Write(args.BytesTransferred) == false )
 			{
 				Disconnect();
-                return;
+				return;
 			}
 
-			var processLength = ProcessRecvData(_recvBuffer.DataSegment);
+            var processLength = ProcessRecvData(_recvBuffer.DataSegment);
 			if ( processLength > _recvBuffer.DataSize)
 			{
 				Disconnect();
@@ -229,7 +229,7 @@ public class Session
 		{
 			if ( buffer.Count < NetworkDefine.HEADER_SIZE )
 			{
-				break;
+                break;
 			}
 
 			var dataSize = BitConverter.ToUInt16(buffer.Array, buffer.Offset);

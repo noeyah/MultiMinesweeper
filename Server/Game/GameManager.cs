@@ -11,7 +11,7 @@ internal class GameManager
 
 	public void Init()
 	{
-		_gameRoom = new GameRoom(9, 10);
+		_gameRoom = new GameRoom(16, 40);
 		_gameRoom.Reset();
 	}
 
