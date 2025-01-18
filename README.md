@@ -23,7 +23,8 @@ IOCP 기반 소켓 통신 라이브러리부터 게임 서버까지 구현한 �
 ---
 ## 각 프로젝트 설명
 
-ServerCore, Server, Packet, TestClient 4개의 프로젝트로 구성
+게임 서버 프로젝트 : ServerCore, Server, Packet
+테스트용 프로젝트 : TestClient, DummyClient
 
 ### ServerCore
 - 소켓 통신 관리하는 IOCP 기반 라이브러리
@@ -118,6 +119,8 @@ public class LoginReq : IPacket
 }
 ```
 
-### TestClient
-- 윈폼 기반 테스트용 클라이언트
+### TestClient, DummyClient
+- 테스트용으로 사용
+- TestClient : 윈폼 기반으로 게임 진행
+- DummyCient : 콘솔, 클라 여러개 연결
 
