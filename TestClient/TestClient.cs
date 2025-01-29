@@ -244,7 +244,7 @@ namespace TestClient
 			}
 		}
 
-		public void UpdateCells(List<GameCell> updateCells, int remainMineCount)
+		public void UpdateCells(List<GameCell> updateCells)
 		{
 			foreach (GameCell gameCell in updateCells)
 			{
@@ -257,8 +257,6 @@ namespace TestClient
 				cell.Update(gameCell);
 				cell.Show();
 			}
-
-			UpdateRemainMineCount(remainMineCount);
 		}
 
 		public void GameOver(List<GameCell> mineCells, bool isWin)

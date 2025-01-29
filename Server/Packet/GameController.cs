@@ -47,16 +47,13 @@ internal partial class PacketHandler
 
 			Console.WriteLine($"{room.Level} ({req.row}, {req.col}) 오픈 - {user.Name}({user.SessionID})");
 
-			var remainMineCount = room.GetRoomRemainMineCount();
-
 			res.OpenCells = openCells;
-			res.RemainMineCount = remainMineCount;
 			SendPacket(packetData.SessionID, res);
 
 			// 방내 다른 유저들한테 openCells 업뎃
 			var not = new UpdateCellNot();
 			not.UpdateCells = openCells;
-			not.RemainMineCount = remainMineCount;
+			not.RemainMineCount = room.GetRoomRemainMineCount();
 			Broadcast(not, room, user.SessionID);
 
 			// 게임 오버면 방내 모든 유저한테 전송

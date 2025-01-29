@@ -194,7 +194,7 @@ internal class GameRoom : RoomWorker
 
 		if (totalCellCount - _mineCount == openCount)
 		{
-			// 혹시 모르니까 한번씩 확인해보장... 
+			// 추가 검증용으로 테스트 후 삭제 예정
 			if (!_board.CheckWinByBoard())
 			{
 				Console.WriteLine($"버그 발생!!!! 승리가 아닌데 승리로 체크됨!!!");
@@ -242,6 +242,7 @@ internal class GameRoom : RoomWorker
 	}
 
 	// 유저들 입장에서 남은 지뢰 개수 (실제 남은 지뢰 개수랑 다름)
+	// 줘야하나 ...
 	public int GetRoomRemainMineCount()
 	{
 		return _mineCount - _board.FlagCellCount;

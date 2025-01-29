@@ -21,8 +21,6 @@ public class OpenCellRes : IPacket
 	public ERROR_CODE ErrorCode;
 	[Key(1)]
 	public List<GameCell> OpenCells;
-	[Key(2)]
-	public int RemainMineCount;
 
 	[IgnoreMember]
 	public PACKET_ID PacketID => PACKET_ID.OpenCellRes;

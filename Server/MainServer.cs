@@ -9,12 +9,6 @@ internal class MainServer : NetworkService
 	private readonly Listener _listener = new Listener();
 
 	private readonly PacketProcessor _packetProcessor;
-	//private SendWorker _sendWorker = new SendWorker();
-	//private BroadcastWorker _broadcastWorker = new BroadcastWorker();
-
-	//private RoomManager _roomManager = new RoomManager();
-	//private UserManager _userManager = new UserManager();
-
 	private readonly ServerSettings serverSettings;
 
 	public MainServer(IOptions<ServerSettings> settings, PacketProcessor packetProcessor, SendWorker sendWorker, BroadcastWorker broadcastWorker)
@@ -30,24 +24,6 @@ internal class MainServer : NetworkService
 
 		_listener.AcceptHandler = Connected;
 	}
-
-	public void Init(int poolCount, int bufferSize, int taskCount)
-	{
-		base.Init(serverSettings.PoolCount, serverSettings.BufferSize);
-
-		_listener.AcceptHandler = Connected;
-
-		//_sendWorker.Init(GetSession);
-		//_broadcastWorker.Init(GetSession);
-		
-		//_roomManager.Init();
-		//_packetProcessor.Init(taskCount, _roomManager, _userManager, SendData);
-	}
-
-	//public void Start(string ip, int port, int backLog)
-	//{
-	//	_listener.Start(ip, port, backLog);
-	//}
 
 	public void Start()
 	{
@@ -111,19 +87,5 @@ internal class MainServer : NetworkService
 			}
 		}
 	}
-
-	//public void SendData(int sessionID, ushort packetID, byte[] data)
-	//{
-	//	var totalSize = data.Length + NetworkDefine.HEADER_SIZE;
-
-	//	var buffer = BufferPool.Rent(totalSize);
-	//	var span = buffer.AsSpan();
-
-	//	BitConverter.TryWriteBytes(span.Slice(0, NetworkDefine.HEADER_DATA_SIZE), (ushort)totalSize);
-	//	BitConverter.TryWriteBytes(span.Slice(NetworkDefine.HEADER_DATA_SIZE, NetworkDefine.HEADER_PACKET_ID_SIZE), packetID);
-	//	data.AsSpan().CopyTo(span.Slice(NetworkDefine.HEADER_SIZE));
-
-	//	_sendWorker.Send(sessionID, buffer);
-	//}
 
 }

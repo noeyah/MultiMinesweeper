@@ -144,7 +144,7 @@ internal class PacketHandler
 			return;
 		}
 
-		_client.UpdateCells(packet.OpenCells, packet.RemainMineCount);
+		_client.UpdateCells(packet.OpenCells);
 
 		_client.ShowText("오픈");
 	}
@@ -164,7 +164,8 @@ internal class PacketHandler
 			return;
 		}
 
-		_client.UpdateCells(new List<GameCell>() { packet.UpdateCell }, packet.RemainMineCount);
+		_client.UpdateCells(new List<GameCell>() { packet.UpdateCell });
+		_client.UpdateRemainMineCount(packet.RemainMineCount);
 
 		_client.ShowText("플래그");
 	}
@@ -194,7 +195,8 @@ internal class PacketHandler
 			_client.ShowMessageBox("UpdateCellNot is null");
 			return;
 		}
-		_client.UpdateCells(packet.UpdateCells, packet.RemainMineCount);
+		_client.UpdateCells(packet.UpdateCells);
+		_client.UpdateRemainMineCount(packet.RemainMineCount);
 	}
 
 	private void OnGameOverNot(ArraySegment<byte> data)
