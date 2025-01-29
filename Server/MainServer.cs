@@ -1,29 +1,57 @@
-﻿using Packet;
+﻿using Microsoft.Extensions.Options;
+using Packet;
 using ServerCore;
 
 namespace Server;
 
 internal class MainServer : NetworkService
 {
-	private Listener _listener = new Listener();
+	private readonly Listener _listener = new Listener();
 
-	private PacketProcessor _packetProcessor = new PacketProcessor();
-	private GameManager _gameManager = new GameManager();
-	private UserManager _userManager = new UserManager();
+	private readonly PacketProcessor _packetProcessor;
+	//private SendWorker _sendWorker = new SendWorker();
+	//private BroadcastWorker _broadcastWorker = new BroadcastWorker();
 
-	public override void Init(int poolCount, int bufferSize)
+	//private RoomManager _roomManager = new RoomManager();
+	//private UserManager _userManager = new UserManager();
+
+	private readonly ServerSettings serverSettings;
+
+	public MainServer(IOptions<ServerSettings> settings, PacketProcessor packetProcessor, SendWorker sendWorker, BroadcastWorker broadcastWorker)
 	{
-		base.Init(poolCount, bufferSize);
+		serverSettings = settings.Value;
+
+		base.Init(serverSettings.PoolCount, serverSettings.BufferSize);
+
+		_packetProcessor = packetProcessor;
+
+		sendWorker.Init(GetSession);
+		broadcastWorker.Init(GetSession);
+
+		_listener.AcceptHandler = Connected;
+	}
+
+	public void Init(int poolCount, int bufferSize, int taskCount)
+	{
+		base.Init(serverSettings.PoolCount, serverSettings.BufferSize);
 
 		_listener.AcceptHandler = Connected;
 
-		_gameManager.Init();
-		_packetProcessor.Init(_gameManager, _userManager, SendData);
+		//_sendWorker.Init(GetSession);
+		//_broadcastWorker.Init(GetSession);
+		
+		//_roomManager.Init();
+		//_packetProcessor.Init(taskCount, _roomManager, _userManager, SendData);
 	}
 
-	public void Start(string ip, int port, int backLog)
+	//public void Start(string ip, int port, int backLog)
+	//{
+	//	_listener.Start(ip, port, backLog);
+	//}
+
+	public void Start()
 	{
-		_listener.Start(ip, port, backLog);
+		_listener.Start(serverSettings.IP, serverSettings.Port, serverSettings.BackLog);
 	}
 
 	public void Stop()
@@ -68,32 +96,34 @@ internal class MainServer : NetworkService
 		_packetProcessor.Receive(packetData);
 	}
 
-	protected override void OnSendCompleted(int sessionID, int bytesTransferred, IList<ArraySegment<byte>> bufferList)
+	protected override void OnSendCompleted(int sessionID, byte[]? buffer, IList<ArraySegment<byte>>? bufferList)
 	{
-		foreach (var segment in bufferList)
+		if ( buffer != null )
 		{
-			BufferPool.Return(segment);
+			BufferPool.Return(new ArraySegment<byte>(buffer));
+		}
+
+		if (bufferList != null)
+		{
+			foreach (var segment in bufferList)
+			{
+				BufferPool.Return(segment);
+			}
 		}
 	}
 
-	public void SendData(int sessionID, ushort packetID, byte[] data)
-	{
-		var session = GetSession(sessionID);
-		if (session is null)
-		{
-			Console.WriteLine($"[ERROR]Invalid sessionID {sessionID}");
-			return;
-		}
+	//public void SendData(int sessionID, ushort packetID, byte[] data)
+	//{
+	//	var totalSize = data.Length + NetworkDefine.HEADER_SIZE;
 
-		var totalSize = data.Length + NetworkDefine.HEADER_SIZE;
+	//	var buffer = BufferPool.Rent(totalSize);
+	//	var span = buffer.AsSpan();
 
-		var buffer = BufferPool.Rent(totalSize);
-		var span = buffer.AsSpan();
+	//	BitConverter.TryWriteBytes(span.Slice(0, NetworkDefine.HEADER_DATA_SIZE), (ushort)totalSize);
+	//	BitConverter.TryWriteBytes(span.Slice(NetworkDefine.HEADER_DATA_SIZE, NetworkDefine.HEADER_PACKET_ID_SIZE), packetID);
+	//	data.AsSpan().CopyTo(span.Slice(NetworkDefine.HEADER_SIZE));
 
-		BitConverter.TryWriteBytes(span.Slice(0, NetworkDefine.HEADER_DATA_SIZE), (ushort)totalSize);
-		BitConverter.TryWriteBytes(span.Slice(NetworkDefine.HEADER_DATA_SIZE, NetworkDefine.HEADER_PACKET_ID_SIZE), packetID);
-		data.AsSpan().CopyTo(span.Slice(NetworkDefine.HEADER_SIZE));
+	//	_sendWorker.Send(sessionID, buffer);
+	//}
 
-		session.Send(buffer);
-	}
 }

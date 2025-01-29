@@ -1,30 +1,33 @@
 ﻿using MessagePack;
 using Packet;
+using ServerCore;
 
 namespace Server;
 
 internal partial class PacketHandler
 {
-	public delegate void SendHandler(int sessionID, ushort packetID, byte[] data);
-	private readonly SendHandler Send;
-
-	private readonly GameManager _gameMgr;
+	private readonly RoomManager _roomMgr;
     private readonly UserManager _userMgr;
+	private readonly SendWorker _sendWorker;
+	private readonly BroadcastWorker _broadcastWorker;
 
+	public PacketHandler(RoomManager roomMgr, UserManager userMgr, SendWorker sendWorker, BroadcastWorker broadcastWorker)
+	{
+		_roomMgr = roomMgr;
+		_userMgr = userMgr;
+		_sendWorker = sendWorker;
+		_broadcastWorker = broadcastWorker;
+	}
 
-	public PacketHandler(GameManager gameMgr, UserManager userMgr, SendHandler sendHandler)
-    {
-        _gameMgr = gameMgr;
-        _userMgr = userMgr;
-		Send = sendHandler;
-    }
-	
-    public void RegistPacketHandler(Dictionary<ushort, Action<PacketData>> dicPacketHandler)
+	public void RegistPacketHandler(Dictionary<ushort, Action<PacketData>> dicPacketHandler)
 	{
 		dicPacketHandler.Add((ushort)PACKET_ID.LoginReq, OnLoginReq);
-		dicPacketHandler.Add((ushort)PACKET_ID.OpenReq, OnOpenReq);
+		dicPacketHandler.Add((ushort)PACKET_ID.JoinRoomReq, OnJoinRoomReq);
+		dicPacketHandler.Add((ushort)PACKET_ID.LeaveRoomReq, OnLeaveRoomReq);
+
+		dicPacketHandler.Add((ushort)PACKET_ID.OpenCellReq, OnOpenCellReq);
 		dicPacketHandler.Add((ushort)PACKET_ID.SetFlagReq, OnSetFlagReq);
-		dicPacketHandler.Add((ushort)PACKET_ID.ResetReq, OnResetReq);
+		dicPacketHandler.Add((ushort)PACKET_ID.GameResetReq, OnGameResetReq);
 	}
 
 	#region common handler
@@ -42,25 +45,84 @@ internal partial class PacketHandler
     private void OnDisconnected(PacketData packetData)
     {
         Console.WriteLine($"끊김 - {packetData.SessionID}");
-        _userMgr.RemoveUser(packetData.SessionID);
 
-		var packet = new LeavePlayerNoti();
-		packet.LeavePlayerIndex = packetData.SessionID;
-		SendNoti(packet);
+		var user = _userMgr.GetUser(packetData.SessionID);
+		if (user is null)
+		{
+			return;
+		}
+
+		_userMgr.RemoveUser(packetData.SessionID);
+
+		if (user.IsLobby())
+		{
+			return;
+		}
+
+		var room = _roomMgr.GetGameRoom(user.RoomLevel);
+		if (room is null)
+		{
+			return;
+		}
+
+		room.LeavePlayer(packetData.SessionID);
+		user.LeaveRoom();
+		_broadcastWorker.RemovePacket(packetData.SessionID);
+
+		// 방내 유저들한테 나감 알림
+		var not = new LeaveRoomNot();
+		not.LeaveUID = packetData.SessionID;
+		Broadcast(not, room, packetData.SessionID);
+		user = null;
 	}
 	#endregion
 
-	#region packet serialize
+	#region packet 관련
 	private T GetPacket<T>(PacketData packetData) where T : IPacket, new()
 	{
 		T packet = MessagePackSerializer.Deserialize<T>(packetData.Body);
 		return packet;
 	}
 
+	// 바로 보냄
 	private void SendPacket<T>(int sessionID, T packet) where T : IPacket
 	{
 		var data = MessagePackSerializer.Serialize(packet);
-		Send(sessionID, (ushort)packet.PacketID, data);
+		var buffer = MakeSendData((ushort)packet.PacketID, data);
+
+		_sendWorker.Send(sessionID, buffer);
+	}
+
+	// 바로 보내지 않고 약간 딜레이 있음
+	private void Broadcast<T>(T packet, GameRoom room, int excludeSessionID = 0) where T : IPacket
+	{
+		var data = MessagePackSerializer.Serialize(packet);
+		var sessionIDs = room.GetRoomSessionIDs();
+
+		foreach (var sessionID in sessionIDs)
+		{
+			if (sessionID == excludeSessionID)
+			{
+				continue;
+			}
+			var buffer = MakeSendData((ushort)packet.PacketID, data);
+			_broadcastWorker.AddPacket(sessionID, buffer);
+		}
+	}
+
+	private ArraySegment<byte> MakeSendData(ushort packetID, byte[] data)
+	{
+		var totalSize = data.Length + NetworkDefine.HEADER_SIZE;
+
+		// OnSendCompleted에서 BufferPool.Return
+		var buffer = BufferPool.Rent(totalSize);
+		var span = buffer.AsSpan();
+
+		BitConverter.TryWriteBytes(span.Slice(0, NetworkDefine.HEADER_DATA_SIZE), (ushort)totalSize);
+		BitConverter.TryWriteBytes(span.Slice(NetworkDefine.HEADER_DATA_SIZE, NetworkDefine.HEADER_PACKET_ID_SIZE), packetID);
+		data.AsSpan().CopyTo(span.Slice(NetworkDefine.HEADER_SIZE));
+
+		return buffer;
 	}
 	#endregion
 

@@ -5,21 +5,26 @@ public enum PACKET_ID : ushort
 	LoginReq,
 	LoginRes,
 
-	OpenReq,
-	OpenRes,
+	JoinRoomReq,
+	JoinRoomRes,
+	JoinRoomNot,
+
+	LeaveRoomReq,
+	LeaveRoomRes,
+	LeaveRoomNot,
+
+	OpenCellReq,
+	OpenCellRes,
 
 	SetFlagReq,
 	SetFlagRes,
 
-	UpdateCellNoti,
-	GameOverNoti,
+	GameResetReq,
+	GameResetRes,
+	GameResetNot,
 
-	ResetReq,
-	ResetRes,
-	ResetNoti,
-
-	JoinPlayerNoti,
-	LeavePlayerNoti,
+	UpdateCellNot,
+	GameOverNot,
 
 	// 서버
 	Connected = 10000,
@@ -32,4 +37,12 @@ public enum CELL_STATE
 	OPEN,
 	FLAG,
 	MINE,
+}
+
+public enum ROOM_LEVEL
+{
+	NONE,
+	EASY,
+	NORMAL,
+	HARD,
 }

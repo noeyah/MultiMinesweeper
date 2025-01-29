@@ -91,26 +91,69 @@ namespace TestClient
 
 		private void button_reset_Click(object sender, EventArgs e)
 		{
-			var packet = new ResetReq();
+			var packet = new GameResetReq();
 
 			_server.Send(packet);
 		}
 
-		public void SetMyPlayerIndex(int index)
+		private void button_join_click(object sender, EventArgs e)
 		{
-			_myPlayerIndex = index;
+			var selectedItem = comboBox_room.SelectedItem;
+
+			if ( selectedItem is null )
+			{
+				MessageBox.Show("콤보박스 에러. 방 다시 선택해주세요");
+				return;
+			}
+
+			if ( !Enum.TryParse<ROOM_LEVEL>(selectedItem.ToString(), out var selectedLevel))
+			{
+				MessageBox.Show("콤보박스 Enum.TryParse 실패");
+				return;
+			}
+
+			if (selectedLevel == ROOM_LEVEL.NONE)
+			{
+				MessageBox.Show("방 선택 잘못됨");
+				return;
+			}
+
+			if ( selectedLevel == ROOM_LEVEL.HARD)
+			{
+				ShowText("하드는 칸 부족하니까 윈폼에서는 들어가지 마세요..");
+				return;
+			}
+
+			var packet = new JoinRoomrReq();
+			packet.RoomLevel = selectedLevel;
+			_server.Send(packet);
+		}
+
+		private void button_leave_click(object sender, EventArgs e)
+		{
+			var packet = new LeaveRoomReq();
+			_server.Send(packet);
+		}
+
+		public void SetRoomList(List<ROOM_LEVEL> roomList)
+		{
+			comboBox_room.Items.Clear();
+			foreach (ROOM_LEVEL level in roomList)
+			{
+				comboBox_room.Items.Add(level.ToString());
+			}
 		}
 
 		public void AddPlayer(Player player)
 		{
-			if (_dicPlayer.ContainsKey(player.Index))
+			if (_dicPlayer.ContainsKey(player.UID))
 			{
 				return;
 			}
 
 			var itemIndex = listBox_players.Items.Add(player.Name);
 			var item = new PlayerItem(player, itemIndex);
-			_dicPlayer.Add(player.Index, item);
+			_dicPlayer.Add(player.UID, item);
 		}
 
 		public void RemovePlayer(int playerIndex)
@@ -122,6 +165,12 @@ namespace TestClient
 
 			listBox_players.Items.RemoveAt(item.ItemIndex);
 			_dicPlayer.Remove(playerIndex);
+		}
+
+		public void RemoveAllPlayer()
+		{
+			listBox_players.Items.Clear();
+			_dicPlayer.Clear();
 		}
 
 		public void ShowMessageBox(string message)
@@ -157,7 +206,7 @@ namespace TestClient
 			action();
 		}
 
-		public void SetBoard(GameInfo gameInfo)
+		public void SetBoard(RoomInfo gameInfo)
 		{
 			_totalMineCount = gameInfo.TotalMineCount;
 			_boardSize = gameInfo.BoardSize;
@@ -251,7 +300,7 @@ namespace TestClient
 				return;
 			}
 
-			var packet = new OpenReq();
+			var packet = new OpenCellReq();
 			packet.row = row;
 			packet.col = col;
 
@@ -275,6 +324,12 @@ namespace TestClient
 			}
 
 			return true;
+		}
+
+		public static bool OptionIgnorePlayerNot = false;
+		public void checkBox_ignore_player_not_Changed(object sender, EventArgs e)
+		{
+			OptionIgnorePlayerNot = checkBox_ignore_player_not.Checked;
 		}
 
 	}

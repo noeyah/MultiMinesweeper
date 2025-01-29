@@ -1,15 +1,10 @@
 ﻿using MessagePack;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Packet;
 
 
 [MessagePackObject]
-public class GameInfo
+public class RoomInfo
 {
 	[Key(0)]
 	public int BoardSize;
@@ -43,7 +38,7 @@ public class GameCell
 public class Player
 {
 	[Key(0)]
-	public int Index;
+	public int UID;
 	[Key(1)]
 	public string Name;
 }

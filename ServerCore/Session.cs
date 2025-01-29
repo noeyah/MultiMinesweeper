@@ -4,7 +4,7 @@ namespace ServerCore;
 public class Session
 {
 	public delegate void ReceiveHandler(int sessionID, ArraySegment<byte> data);
-	public delegate void SendCompletedHandler(int sessionID, int bytesTransferred, IList<ArraySegment<byte>> sendList);
+	public delegate void SendCompletedHandler(int sessionID, byte[]? buffer, IList<ArraySegment<byte>>? bufferList);
 	public delegate void DisconnectedHandler(int sessionID);
 	public delegate void ClosedHandler(int sessionID, SocketAsyncEventArgs recvArgs, SocketAsyncEventArgs sendArgs);
 
@@ -92,7 +92,6 @@ public class Session
 			}
 		}
 	}
-
 	public void Send(List<ArraySegment<byte>> bufferList)
 	{
 		if (bufferList.Count == 0)
@@ -116,7 +115,7 @@ public class Session
 
 	private void StartSend()
 	{
-		if (_disconnected == 1)
+		if (_disconnected == 1 || _sendQueue.Count == 0)
 		{
 			return;
 		}
@@ -126,12 +125,22 @@ public class Session
 			var buffer = _sendQueue.Dequeue();
 			_pendingList.Add(buffer);
 		}
-		_sendArgs.BufferList = _pendingList;
+
+		if ( _pendingList.Count == 1 )
+		{
+			_sendArgs.SetBuffer(_pendingList[0].Array, _pendingList[0].Offset, _pendingList[0].Count);
+			_sendArgs.BufferList = null;
+		}
+		else
+		{
+			_sendArgs.SetBuffer(null, 0, 0);
+			_sendArgs.BufferList = _pendingList;
+		}
 
 		try
 		{
             bool pending = _socket.SendAsync(_sendArgs);
-			if (pending == false)
+			if (!pending)
 			{
 				OnSendCompleted(_sendArgs);
 			}
@@ -150,9 +159,10 @@ public class Session
 			{
 				try
 				{
-					SendCompleted(SessionID, _sendArgs.BytesTransferred, _sendArgs.BufferList);
-
+					SendCompleted(SessionID, _sendArgs.Buffer, _sendArgs.BufferList);
+					
 					_sendArgs.BufferList = null;
+					_sendArgs.SetBuffer(null, 0, 0);
 					_pendingList.Clear();
 
 					if ( _sendQueue.Count > 0 )

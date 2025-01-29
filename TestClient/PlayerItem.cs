@@ -15,7 +15,7 @@ internal class PlayerItem
 
 	public PlayerItem(Player player, int itemIndex)
 	{
-		Index = player.Index;
+		Index = player.UID;
 		Name = player.Name;
 		ItemIndex = itemIndex;
 	}

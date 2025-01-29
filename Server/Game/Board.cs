@@ -9,14 +9,10 @@ internal class Board
 	private readonly int _mineCount;
 
 	private List<(int row, int col)> _mines = new List<(int row, int col)>();
-	private int _remainMineCount_real = 0;
 	private int _flagCount = 0;
-	private int _closeCount = 0;
+	private int _openCount = 0;
 
-	public int TotalMineCount => _mineCount;
-	public int RemainMineCount_Player => _mineCount - _flagCount;
-	public int RemainMineCount_Real => _remainMineCount_real;
-	public int CloseCellCount => _closeCount;
+	public int OpenCellCount => _openCount;
 	public int FlagCellCount => _flagCount;
 
 	public Board(int size, int mineCount)
@@ -37,8 +33,7 @@ internal class Board
 	public void Reset()
 	{
 		_flagCount = 0;
-		_closeCount = _size * _size;
-		_remainMineCount_real = _mineCount;
+		_openCount = 0;
 
 		// cell 초기화 + 지뢰심기
 		PlantMines();
@@ -47,32 +42,34 @@ internal class Board
 		SetAdjacentMines();
 	}
 
-	public void OpenCell(int row, int col, ref List<GameCell> updateCells)
+	public void OpenCell(int row, int col, ref List<GameCell> update_cells)
 	{
 		var cell = _grid[row, col];
-
-		// 이미 오픈 or 깃발 상태면 리턴
-		if ( cell.GetState() == CELL_STATE.OPEN
-			|| cell.GetState() == CELL_STATE.FLAG )
+		if ( cell.State != CELL_STATE.CLOSE)
 		{
 			return;
 		}
 
 		cell.Open();
-		updateCells.Add(cell.GetGameCell());
-		_closeCount--;
+		update_cells.Add(cell.GetGameCell());
 
-		// 지뢰가 아니고, 주변 지뢰 개수가 0개이면 연쇄 오픈
-		if ( !cell.IsMine && cell.AdjacentMineCount == 0 )
+		// 지뢰가 아니면
+		if ( !cell.IsMine )
 		{
-			ChainOpen(row, col, ref updateCells);
+			_openCount++;
+
+			// 주변 지뢰 개수가 0개이면 연쇄 오픈
+			if (cell.AdjacentMineCount == 0)
+			{
+				ChainOpen(row, col, ref update_cells);
+			}
 		}
 	}
 
-	public GameCell FlagCell(int row, int col, bool new_flag)
+	public GameCell? FlagCell(int row, int col, bool new_flag)
 	{
 		var cell = _grid[row, col];
-		var state = cell.GetState();
+		var state = cell.State;
 
 		if (state != CELL_STATE.FLAG && state != CELL_STATE.CLOSE )
 		{
@@ -83,7 +80,6 @@ internal class Board
 		var current_flag = state == CELL_STATE.FLAG;
 		if (new_flag == current_flag)
 		{
-            Console.WriteLine($"({row}, {col}) 현재 {state.ToString()}, 들어온 flag {new_flag}");
 			return null;
         }
 
@@ -92,33 +88,16 @@ internal class Board
 		if (new_flag)
 		{
 			_flagCount++;
-
-			if ( cell.IsMine )
-			{
-				// 남은 지뢰 차감
-				_remainMineCount_real--;
-			}
 		}
 		else
 		{
 			_flagCount--;
-
-			if (cell.IsMine)
-			{
-				// 찾은 지뢰 취소
-				_remainMineCount_real++;
-			}
 		}
 
 		return cell.GetGameCell();
 	}
 
-	public CELL_STATE GetCellState(int row, int col)
-	{
-		return _grid[row, col].GetState();
-	}
-
-	private void ChainOpen(int cellRow, int cellCol, ref List<GameCell> updateCells)
+	private void ChainOpen(int cellRow, int cellCol, ref List<GameCell> update_cells)
 	{
 		// cellRow -1, cellRow, cellRow +1
 		// cellCol -1, cellCol, cellCol +1
@@ -126,13 +105,28 @@ internal class Board
 		{
 			for (int col = Math.Max(0, cellCol - 1); col <= Math.Min(_size - 1, cellCol + 1); col++)
 			{
-				if (_grid[row, col].GetState() == CELL_STATE.CLOSE)
+				if (_grid[row, col].State == CELL_STATE.CLOSE)
 				{
-					OpenCell(row, col, ref updateCells);
+					OpenCell(row, col, ref update_cells);
 				}
 			}
 		}
 	}
+
+	public CELL_STATE GetCellState(int row, int col)
+	{
+		return _grid[row, col].State;
+	}
+
+	// 유효하지 않는 인덱스
+	public bool InvalidCellIndex(int row, int col)
+	{
+		return row < 0
+			|| row >= _size
+			|| col < 0
+			|| col >= _size;
+	}
+
 
 	#region 준비 함수
 	private void PlantMines()
@@ -170,6 +164,7 @@ internal class Board
 		}
 	}
 
+	// 인접한 지뢰 개수 세팅
 	private void SetAdjacentMines()
 	{
 		for (int row = 0; row < _size; row++)
@@ -186,6 +181,7 @@ internal class Board
 		}
 	}
 
+	// 인접한 지뢰 개수 계산
 	private int CalcAdjacentMineCount(int cellRow, int cellCol)
 	{
 		int minesCount = 0;
@@ -221,16 +217,48 @@ internal class Board
 
 	public List<GameCell> GetAllMineGameCell()
 	{
-		var gameCells = new List<GameCell>();
+		var mineCells = new List<GameCell>();
 
 		foreach (var mine in _mines)
 		{
 			var cell = _grid[mine.row, mine.col];
-			gameCells.Add(cell.GetGameCell());
+			mineCells.Add(cell.GetGameCell());
 		}
 
-		return gameCells;
+		return mineCells;
 	}
 	#endregion
 
+	// 테스트용
+	public bool CheckWinByBoard()
+	{
+		for (int row = 0; row < _size; row++)
+		{
+			for (int col = 0; col < _size; col++)
+			{
+				var cell = _grid[row, col];
+				var state = cell.State;
+
+				if (state == CELL_STATE.OPEN)
+				{
+					continue;
+				}
+
+				if (state == CELL_STATE.MINE)
+				{
+					// 버그 발생
+					return false;
+				}
+
+				if ( cell.IsMine )
+				{
+					continue;
+				}
+
+				// 지뢰가 아닌데 플래그or닫힘 -> 게임 안끝남
+				return false;
+			}
+		}
+		return true;
+	}
 }

@@ -15,7 +15,6 @@ internal class Cell
 
 	public (int row, int col) Position => (_row, _col);
 	public bool IsMine => _isMine;
-	public bool IsFlag => _isFlag;
 	public int AdjacentMineCount => _adjacentMineCount;
 
 	public Cell(int row, int col)
@@ -52,38 +51,41 @@ internal class Cell
 		_isOpen = true;
 	}
 
+	public CELL_STATE State
+	{
+		get 
+		{
+			if (_isFlag)
+			{
+				return CELL_STATE.FLAG;
+			}
+			else if (_isOpen)
+			{
+				if (_isMine)
+				{
+					return CELL_STATE.MINE;
+				}
+				else
+				{
+					return CELL_STATE.OPEN;
+				}
+			}
+
+			return CELL_STATE.CLOSE;
+		}
+	}
+
 	public GameCell GetGameCell()
 	{
 		var gameCell = new GameCell();
 		gameCell.Row = _row;
 		gameCell.Col = _col;
-		gameCell.State = GetState();
+		gameCell.State = State;
 
-		if (GetState() == CELL_STATE.OPEN)
+		if (State == CELL_STATE.OPEN)
 		{
 			gameCell.AdjacentMineCount = _adjacentMineCount;
 		}
 		return gameCell;
-	}
-
-	public CELL_STATE GetState()
-	{
-		if (_isFlag)
-		{
-			return CELL_STATE.FLAG;
-		}
-		else if (_isOpen)
-		{
-			if (_isMine)
-			{
-				return CELL_STATE.MINE;
-			}
-			else
-			{
-				return CELL_STATE.OPEN;
-			}
-		}
-
-		return CELL_STATE.CLOSE;
 	}
 }

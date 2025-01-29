@@ -1,50 +1,58 @@
-﻿using System.Threading.Channels;
+﻿using Microsoft.Extensions.Options;
+using Packet;
+using System.Threading.Channels;
 
 namespace Server;
 
 internal class PacketProcessor
 {
-	private PacketHandler _packetHandler;
+	private readonly Channel<PacketData> _channel = Channel.CreateUnbounded<PacketData>();
+	private readonly Dictionary<ushort, Action<PacketData>> _dicPacketHandler = new();
 
-	private Channel<PacketData> _channel = Channel.CreateUnbounded<PacketData>();
-	private Task _processTask;
+	private readonly CancellationTokenSource _cts = new();
 
-	private Dictionary<ushort, Action<PacketData>> _dicPacketHandler = new Dictionary<ushort, Action<PacketData>>();
-
-	public void Init(GameManager gameManager, UserManager userManager, PacketHandler.SendHandler sendHandler)
+	public PacketProcessor(IOptions<ServerSettings> settings, PacketHandler packetHandler)
 	{
-		_packetHandler = new PacketHandler(gameManager, userManager, sendHandler);
+		var settingsSettings = settings.Value;
 		
-		_packetHandler.RegistCommon(_dicPacketHandler);
-		_packetHandler.RegistPacketHandler(_dicPacketHandler);
-		_processTask = ProcessAsync();
+		packetHandler.RegistCommon(_dicPacketHandler);
+		packetHandler.RegistPacketHandler(_dicPacketHandler);
+
+		for (int i = 0; i < settingsSettings.TaskCount; i++)
+		{
+			Task.Run(() => ProcessAsync(_channel, _cts.Token));
+		}
 	}
 
 	public void Receive(PacketData packetData)
 	{
-		_channel.Writer.TryWrite(packetData);
+		if (!_channel.Writer.TryWrite(packetData))
+		{
+            Console.WriteLine($"PacketProcessor Receive 실패 : {packetData.PacketID}");
+        }
 	}
 
 	public void Stop()
 	{
 		_channel.Writer.Complete();
+		_cts.Cancel();
 	}
 
-	private async Task ProcessAsync()
+	private async Task ProcessAsync(Channel<PacketData> channel, CancellationToken ctsToken)
 	{
-		while (await _channel.Reader.WaitToReadAsync())
+		while (await channel.Reader.WaitToReadAsync(ctsToken))
 		{
-			while (_channel.Reader.TryRead(out var packetData))
+			while (channel.Reader.TryRead(out var packetData))
 			{
 				try
 				{
-					if (_dicPacketHandler.TryGetValue(packetData.PacketID, out var handler))
+                    if (_dicPacketHandler.TryGetValue(packetData.PacketID, out var handler))
 					{
 						handler(packetData);
 					}
 					else
 					{
-						Console.WriteLine($"알 수 없는 패킷이 들어옴 - sessionID : {packetData.SessionID}, packetID : {packetData.PacketID}, size : {packetData.Size}");
+						Console.WriteLine($"알 수 없는 패킷이 들어옴 - sessionID : {packetData.SessionID}, packetID : {packetData.PacketID}");
 					}
 				}
 				catch (Exception ex)
@@ -54,6 +62,4 @@ internal class PacketProcessor
 			}
 		}
 	}
-
-
 }

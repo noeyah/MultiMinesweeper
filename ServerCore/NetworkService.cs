@@ -10,13 +10,13 @@ public abstract class NetworkService
 
 	#region handler
 	protected abstract void OnReceiveData(int sessionID, ArraySegment<byte> data);
-	protected abstract void OnSendCompleted(int sessionID, int bytesTransferred, IList<ArraySegment<byte>> bufferList);
+	protected abstract void OnSendCompleted(int sessionID, byte[]? buffer, IList<ArraySegment<byte>>? bufferList);
 	protected abstract void OnConnected(int sessionID);
 	protected abstract void OnDisconnected(int sessionID);
 	#endregion
 
 
-	public virtual void Init(int poolCount, int bufferSize)
+	protected virtual void Init(int poolCount, int bufferSize)
 	{
 		_sessionManager = new SessionManager(bufferSize);
 		_argsPool = new SocketAsyncEventArgsPool(poolCount, IO_Completed);

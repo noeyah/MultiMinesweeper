@@ -1,11 +1,6 @@
 ﻿using MessagePack;
 using Packet;
 using ServerCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TestClient;
 
@@ -17,7 +12,7 @@ internal class Server : NetworkService
 
 	private PacketHandler _packetHandler = new PacketHandler();
 
-	public override void Init(int poolCount, int bufferSize)
+	public new void Init(int poolCount, int bufferSize)
 	{
 		base.Init(poolCount, bufferSize);
 		_connector.ConnectedHandler = Connected;
@@ -64,7 +59,7 @@ internal class Server : NetworkService
 		_packetHandler.EventHandler(packetID, dataSegment);
 	}
 
-	protected override void OnSendCompleted(int sessionID, int bytesTransferred, IList<ArraySegment<byte>> bufferList)
+	protected override void OnSendCompleted(int sessionID, byte[]? buffer, IList<ArraySegment<byte>>? bufferList)
 	{
 	}
 

@@ -6,7 +6,7 @@ class SessionManager
 {
 	private static int _sessionID = 0;
 
-	private ConcurrentDictionary<int, Session> _dicSession = new ConcurrentDictionary<int, Session>();
+	private readonly ConcurrentDictionary<int, Session> _dicSession = new ConcurrentDictionary<int, Session>();
 
 	private readonly int _bufferSize;
 

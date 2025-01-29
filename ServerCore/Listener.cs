@@ -21,7 +21,7 @@ public class Listener
 			_listenSocket.Listen(backLog);
 
 			var eventHandler = new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
-			for ( int i = 0; i < backLog; i++ )
+			for ( int i = 0; i < 5; i++ )
 			{
 				SocketAsyncEventArgs acceptEventArgs = new SocketAsyncEventArgs();
 				acceptEventArgs.Completed += eventHandler;
