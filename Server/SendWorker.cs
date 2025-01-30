@@ -33,24 +33,22 @@ internal class SendWorker
 
 	private void Process()
 	{
-		while (true)
+		while (_sendQueue.TryDequeue(out var data))
 		{
-			(int sessionID, ArraySegment<byte> buffer) data;
-
-			lock (_lock)
-			{
-				if (!_sendQueue.TryDequeue(out data))
-				{
-					_isProcessing = false;
-					return;
-				}
-			}
-
-			// send 처리
 			var session = _sessionFunc(data.sessionID);
 			if (session != null)
 			{
 				session.Send(data.buffer);
+			}
+		}
+
+		lock (_lock)
+		{
+			_isProcessing = false;
+			if ( _sendQueue.Count > 0 )
+			{
+				_isProcessing = true;
+				Task.Run(Process);
 			}
 		}
 	}

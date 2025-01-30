@@ -1,5 +1,6 @@
 ﻿using ServerCore;
 using System.Collections.Concurrent;
+using System.Threading.Channels;
 
 namespace Server;
 
@@ -9,6 +10,7 @@ internal class BroadcastWorker
 
 	private object _lock = new object();
 	private bool _isProcessing = false;
+	private readonly CancellationTokenSource _cts = new();
 
 	private Func<int, Session> _sessionFunc;
 
@@ -43,6 +45,11 @@ internal class BroadcastWorker
 	public void RemovePacket(int sessionID)
 	{
 		_dicSend.TryRemove(sessionID, out _);
+	}
+
+	public void Stop()
+	{
+		_cts.Cancel();
 	}
 
 	private async Task ProcessAsync()
@@ -80,7 +87,8 @@ internal class BroadcastWorker
 				}
 			}
 
-			await Task.Delay(500);
+			await Task.Delay(300, _cts.Token);
 		}
 	}
+
 }

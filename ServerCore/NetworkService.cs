@@ -27,6 +27,11 @@ public abstract class NetworkService
 		return _sessionManager.GetSession(sessionID);
 	}
 
+	public void ServerDown()
+	{
+		_sessionManager.CloseAll();
+	}
+
 	#region session event
 
 	protected void Connected(Socket socket)

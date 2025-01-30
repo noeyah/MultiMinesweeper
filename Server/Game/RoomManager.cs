@@ -34,4 +34,13 @@ internal class RoomManager
 	{
 		return _rooms.Keys.ToList();
 	}
+
+	public void Clear()
+	{
+		foreach (var room in _rooms.Values)
+		{
+			room.Close();
+		}
+		_rooms.Clear();
+	}
 }

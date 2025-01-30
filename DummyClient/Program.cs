@@ -35,7 +35,10 @@ internal class Program
 				if (key.KeyChar == 's')
 				{
 					await server.TestGamePlay();
-
+				}
+				if (key.KeyChar == 'd')
+				{
+					await server.TestGameReset();
 				}
 			}
 		}

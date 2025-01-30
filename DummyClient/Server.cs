@@ -94,6 +94,26 @@ internal class Server : NetworkService
 		Console.WriteLine($"오픈/플래그 요청 {clientCount}개");
 	}
 
+	public async Task TestGameReset()
+	{
+		var clientCount = _sessionIDs.Count;
+		var tasks = new Task[clientCount];
+		var rand = new Random();
+
+		for (int i = 0; i < clientCount; i++)
+		{
+			var sessionID = _sessionIDs[i];
+
+			tasks[i] = Task.Run(() =>
+			{
+				var packet = new GameResetReq();
+				Send(sessionID, packet);
+			});
+		}
+		await Task.WhenAll(tasks);
+		Console.WriteLine($"리셋 요청 {clientCount}개");
+	}
+
 	protected override void OnConnected(int sessionID)
 	{
 		Console.WriteLine($"OnConnected - {sessionID}");
@@ -103,6 +123,10 @@ internal class Server : NetworkService
 	protected override void OnDisconnected(int sessionID)
 	{
 		Console.WriteLine($"OnDisconnected - {sessionID}");
+		if ( _sessionIDs.Contains(sessionID) )
+		{
+			_sessionIDs.Remove(sessionID);
+		}
 	}
 
 	protected override void OnReceiveData(int sessionID, ArraySegment<byte> data)

@@ -1,23 +1,40 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Packet;
 using ServerCore;
 
 namespace Server;
 
-internal class MainServer : NetworkService
+internal class MainServer : NetworkService, IHostedService
 {
 	private readonly Listener _listener = new Listener();
 
+	private readonly ServerSettings _serverSettings;
+	private readonly RoomManager _roomManager;
+	private readonly UserManager _userManager;
+	private readonly SendWorker _sendWorker;
+	private readonly BroadcastWorker _broadcastWorker;
+	private readonly PacketHandler _packetHandler;
 	private readonly PacketProcessor _packetProcessor;
-	private readonly ServerSettings serverSettings;
 
-	public MainServer(IOptions<ServerSettings> settings, PacketProcessor packetProcessor, SendWorker sendWorker, BroadcastWorker broadcastWorker)
+	public MainServer(
+		IOptions<ServerSettings> settings, 
+		RoomManager roomManager,
+		UserManager userManager,
+		SendWorker sendWorker, 
+		BroadcastWorker broadcastWorker,
+		PacketHandler packetHandler,
+		PacketProcessor packetProcessor) 
 	{
-		serverSettings = settings.Value;
-
-		base.Init(serverSettings.PoolCount, serverSettings.BufferSize);
-
+		_serverSettings = settings.Value;
+		_roomManager = roomManager;
+		_userManager = userManager;
+		_sendWorker = sendWorker;
+		_broadcastWorker = broadcastWorker;
+		_packetHandler = packetHandler;
 		_packetProcessor = packetProcessor;
+
+		base.Init(_serverSettings.PoolCount, _serverSettings.BufferSize);
 
 		sendWorker.Init(GetSession);
 		broadcastWorker.Init(GetSession);
@@ -27,12 +44,24 @@ internal class MainServer : NetworkService
 
 	public void Start()
 	{
-		_listener.Start(serverSettings.IP, serverSettings.Port, serverSettings.BackLog);
+		_listener.Start(_serverSettings.IP, _serverSettings.Port, _serverSettings.BackLog);
 	}
 
-	public void Stop()
+	public Task StartAsync(CancellationToken cancellationToken)
 	{
+		Start();
+		return Task.CompletedTask;
+	}
+
+	public Task StopAsync(CancellationToken cancellationToken)
+	{
+		_roomManager.Clear();
 		_packetProcessor.Stop();
+		_broadcastWorker.Stop();
+
+		ServerDown();	// 세션 다 끊음(콜백 다 무시)
+
+		return Task.CompletedTask;
 	}
 
 	protected override void OnConnected(int sessionID)

@@ -39,4 +39,12 @@ class SessionManager
 		_dicSession.TryRemove(sessionID, out var session);
 	}
 
+	public void CloseAll()
+	{
+		foreach (var session in _dicSession.Values)
+		{
+			// 서버 종료로 인한 강제 끊기!
+			session.Close();
+		}
+	}
 }

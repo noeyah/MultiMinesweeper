@@ -81,6 +81,13 @@ public class Session
 		Closed(_sessionID, recvArgs, sendArgs);
 	}
 
+	public void Close()
+	{
+		// 강종
+		_socket.Shutdown(SocketShutdown.Both);
+		_socket.Close();
+	}
+
 	public void Send(ArraySegment<byte> buffer)
 	{
 		lock (_lock)

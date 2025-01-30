@@ -23,30 +23,11 @@ internal class Program
 			services.AddSingleton<BroadcastWorker>();
 			services.AddSingleton<PacketHandler>();
 			services.AddSingleton<PacketProcessor>();
-			services.AddSingleton<MainServer>();
+
+			services.AddHostedService<MainServer>();
 		});
 
 		var host = builder.Build();
-
-		var mainServer = host.Services.GetRequiredService<MainServer>();
-		mainServer.Start();
-
-		while (true)
-		{
-			Thread.Sleep(1000);
-
-			if (Console.KeyAvailable)
-			{
-				var key = Console.ReadKey(true);
-				if (key.KeyChar == 'x')
-				{
-					Console.WriteLine("Stop Server");
-					//
-
-					break;
-				}
-
-			}
-		}
+		host.Run();
 	}
 }

@@ -87,6 +87,11 @@ internal class GameRoom : RoomWorker
 		}
 	}
 
+	public void Close()
+	{
+		StopProcess();
+	}
+
 	#region 게임
 	private ERROR_CODE OpenCell(int row, int col, ref List<GameCell> update_cells)
 	{
