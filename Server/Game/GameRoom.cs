@@ -72,7 +72,7 @@ internal class GameRoom : RoomWorker
 
 	public ERROR_CODE Reset()
 	{
-        lock (_lock)
+		lock (_lock)
 		{
 			if (!_gameOver)
 			{

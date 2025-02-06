@@ -55,7 +55,7 @@ public class Session
 
 	public void Disconnect()
 	{
-        if ( Interlocked.Exchange(ref _disconnected, 1) == 1 )
+		if ( Interlocked.Exchange(ref _disconnected, 1) == 1 )
 		{
 			return;
 		}
@@ -146,7 +146,7 @@ public class Session
 
 		try
 		{
-            bool pending = _socket.SendAsync(_sendArgs);
+			bool pending = _socket.SendAsync(_sendArgs);
 			if (!pending)
 			{
 				OnSendCompleted(_sendArgs);
@@ -184,7 +184,7 @@ public class Session
 			}
 			else
 			{
-                Disconnect();
+				Disconnect();
 			}
 		}
 	}
@@ -203,7 +203,7 @@ public class Session
 		bool pending = _socket.ReceiveAsync(args);
 		if (pending == false)
 		{
-            OnRecvCompleted(args);
+			OnRecvCompleted(args);
 		}
 	}
 
@@ -217,7 +217,7 @@ public class Session
 				return;
 			}
 
-            var processLength = ProcessRecvData(_recvBuffer.DataSegment);
+			var processLength = ProcessRecvData(_recvBuffer.DataSegment);
 			if ( processLength > _recvBuffer.DataSize)
 			{
 				Disconnect();
@@ -246,7 +246,7 @@ public class Session
 		{
 			if ( buffer.Count < NetworkDefine.HEADER_SIZE )
 			{
-                break;
+				break;
 			}
 
 			var dataSize = BitConverter.ToUInt16(buffer.Array, buffer.Offset);

@@ -86,8 +86,8 @@ internal class PacketHandler
 		Console.WriteLine($"방 참가 성공 : {sessionID}");
 
 		var level = sessionID % 2 == 0 ? ROOM_LEVEL.EASY : ROOM_LEVEL.NORMAL;
-        Console.WriteLine($"{level} 방 인원 : {res.Players.Count}");
-    }
+		Console.WriteLine($"{level} 방 인원 : {res.Players.Count}");
+	}
 
 	private void OnLeaveRoomRes(int sessionID, ArraySegment<byte> data)
 	{

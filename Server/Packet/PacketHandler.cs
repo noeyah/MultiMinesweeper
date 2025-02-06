@@ -7,7 +7,7 @@ namespace Server;
 internal partial class PacketHandler
 {
 	private readonly RoomManager _roomMgr;
-    private readonly UserManager _userMgr;
+	private readonly UserManager _userMgr;
 	private readonly SendWorker _sendWorker;
 	private readonly BroadcastWorker _broadcastWorker;
 
@@ -38,13 +38,13 @@ internal partial class PacketHandler
 	}
 
 	private void OnConnected(PacketData packetData)
-    {
-        Console.WriteLine($"연결 - {packetData.SessionID}");
-    }
+	{
+		Console.WriteLine($"연결 - {packetData.SessionID}");
+	}
 
-    private void OnDisconnected(PacketData packetData)
-    {
-        Console.WriteLine($"끊김 - {packetData.SessionID}");
+	private void OnDisconnected(PacketData packetData)
+	{
+		Console.WriteLine($"끊김 - {packetData.SessionID}");
 
 		var user = _userMgr.GetUser(packetData.SessionID);
 		if (user is null)

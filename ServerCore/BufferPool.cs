@@ -14,10 +14,10 @@ public class BufferPool
 
 	public static void Return(ArraySegment<byte> buffer)
 	{
-		if ( buffer.Array is null )
+		if (buffer.Array is null)
 		{
 			return;
 		}
 		_arrayPool.Return(buffer.Array);
-    }
+	}
 }

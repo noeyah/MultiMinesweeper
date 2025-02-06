@@ -34,8 +34,8 @@ internal class Server : NetworkService
 		}
 
 		await Task.WhenAll(tasks);
-        Console.WriteLine($"클라 연결 {clientCount}개");
-    }
+		Console.WriteLine($"클라 연결 {clientCount}개");
+	}
 
 	public async Task TestLogin()
 	{
@@ -81,8 +81,8 @@ internal class Server : NetworkService
 					packet.flag = true;
 					Send(sessionID, packet);
 				}
-                else
-                {
+				else
+				{
 					var packet = new OpenCellReq();
 					packet.row = rand.Next(0, maxSize);
 					packet.col = rand.Next(0, maxSize);
@@ -151,7 +151,7 @@ internal class Server : NetworkService
 	public void Send<T>(int sessionID, T packet) where T : IPacket
 	{
 		var data = MessagePackSerializer.Serialize(packet);
-        var totalSize = data.Length + NetworkDefine.HEADER_SIZE;
+		var totalSize = data.Length + NetworkDefine.HEADER_SIZE;
 
 		var buffer = new byte[totalSize];
 		var span = buffer.AsSpan();

@@ -107,8 +107,8 @@ internal partial class PacketHandler
 
 			if (flagCell is null)
 			{
-                Console.WriteLine($"flagCell is null");
-                res.ErrorCode = ERROR_CODE.FAIL;
+				Console.WriteLine($"flagCell is null");
+				res.ErrorCode = ERROR_CODE.FAIL;
 				SendPacket(user.SessionID, res);
 				return;
 			}

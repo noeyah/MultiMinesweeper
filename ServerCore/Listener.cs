@@ -21,12 +21,12 @@ public class Listener
 			_listenSocket.Listen(backLog);
 
 			var eventHandler = new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
-			for ( int i = 0; i < 5; i++ )
+			for (int i = 0; i < 5; i++)
 			{
 				SocketAsyncEventArgs acceptEventArgs = new SocketAsyncEventArgs();
 				acceptEventArgs.Completed += eventHandler;
-				
-				if ( _listenSocket.AcceptAsync(acceptEventArgs) == false )
+
+				if (_listenSocket.AcceptAsync(acceptEventArgs) == false)
 				{
 					OnAcceptCompleted(_listenSocket, acceptEventArgs);
 				}
@@ -34,8 +34,8 @@ public class Listener
 		}
 		catch (Exception ex)
 		{
-            Console.WriteLine(ex);
-        }
+			Console.WriteLine(ex);
+		}
 	}
 
 	private void OnAcceptCompleted(object sender, SocketAsyncEventArgs args)
@@ -58,7 +58,7 @@ public class Listener
 		{
 			acceptPending = _listenSocket.AcceptAsync(args);
 		}
-		catch (Exception ex )
+		catch (Exception ex)
 		{
 			Console.WriteLine(ex.ToString());
 			//acceptPeding = true;

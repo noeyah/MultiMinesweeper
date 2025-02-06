@@ -28,8 +28,8 @@ internal class PacketProcessor
 	{
 		if (!_channel.Writer.TryWrite(packetData))
 		{
-            Console.WriteLine($"PacketProcessor Receive 실패 : {packetData.PacketID}");
-        }
+			Console.WriteLine($"PacketProcessor Receive 실패 : {packetData.PacketID}");
+		}
 	}
 
 	public void Stop()
@@ -46,7 +46,7 @@ internal class PacketProcessor
 			{
 				try
 				{
-                    if (_dicPacketHandler.TryGetValue(packetData.PacketID, out var handler))
+					if (_dicPacketHandler.TryGetValue(packetData.PacketID, out var handler))
 					{
 						handler(packetData);
 					}

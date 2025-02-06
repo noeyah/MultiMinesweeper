@@ -25,8 +25,8 @@ internal class BroadcastWorker
 		{
 			if (!_dicSend.TryAdd(sessionID, new List<ArraySegment<byte>>()))
 			{
-                Console.WriteLine($"AddPacket 실패 : {sessionID}");
-                return;
+				Console.WriteLine($"AddPacket 실패 : {sessionID}");
+				return;
 			}
 		}
 
@@ -87,7 +87,7 @@ internal class BroadcastWorker
 				}
 			}
 
-			await Task.Delay(300, _cts.Token);
+			await Task.Delay(500, _cts.Token);
 		}
 	}
 

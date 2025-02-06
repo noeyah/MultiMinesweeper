@@ -81,7 +81,7 @@ internal class Board
 		if (new_flag == current_flag)
 		{
 			return null;
-        }
+		}
 
 		cell.SetFlag(new_flag);
 

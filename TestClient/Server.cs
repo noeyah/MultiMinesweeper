@@ -31,7 +31,7 @@ internal class Server : NetworkService
 
 	protected override void OnConnected(int sessionID)
 	{
-        Console.WriteLine("OnConnected");
+		Console.WriteLine("OnConnected");
 
 		_sessionID = sessionID;
 		_session = GetSession(sessionID);
@@ -41,7 +41,7 @@ internal class Server : NetworkService
 
 	protected override void OnDisconnected(int sessionID)
 	{
-        Console.WriteLine("OnDisconnected");
+		Console.WriteLine("OnDisconnected");
 	}
 
 	protected override void OnReceiveData(int sessionID, ArraySegment<byte> data)
