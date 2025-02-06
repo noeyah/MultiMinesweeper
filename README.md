@@ -15,8 +15,6 @@ IOCP 기반 소켓 통신 라이브러리부터 게임 서버까지 구현한 �
 
 #### [🎥 실행 영상 바로가기](https://youtu.be/dO3Y7HMLbQ0) : <https://youtu.be/dO3Y7HMLbQ0>
 
-#### [📜 포트폴리오 설명 PDF 보기](https://drive.google.com/file/d/1D3ihCDgoZy1829SHY2HwONGLIyQUdL-z/view?usp=sharing)
-
 
 ---
 
