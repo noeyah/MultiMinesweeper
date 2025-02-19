@@ -26,7 +26,7 @@ public class LoginRes : IPacket
 }
 
 [MessagePackObject]
-public class JoinRoomrReq : IPacket
+public class JoinRoomReq : IPacket
 {
 	[Key(0)]
 	public ROOM_LEVEL RoomLevel;

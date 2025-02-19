@@ -40,7 +40,7 @@ internal partial class PacketHandler
 	// 방 입장
 	private void OnJoinRoomReq(PacketData packetData)
 	{
-		var req = GetPacket<JoinRoomrReq>(packetData);
+		var req = GetPacket<JoinRoomReq>(packetData);
 		if (req is null)
 		{
 			return;

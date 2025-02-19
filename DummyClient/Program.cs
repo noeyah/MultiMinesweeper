@@ -12,8 +12,6 @@ internal class Program
 
 		Server server = new Server();
 		server.Init(200, 4096);
-		await server.Connect(ip, port, clientCount);
-		
 
 		while (true)
 		{
@@ -22,23 +20,9 @@ internal class Program
 			if (Console.KeyAvailable)
 			{
 				var key = Console.ReadKey(true);
-				if (key.KeyChar == 'x')
+				if (key.KeyChar == 'q')
 				{
-					Console.WriteLine("Stop");
-					break;
-				}
-				if ( key.KeyChar == 'a')
-				{
-					await server.TestLogin();
-
-				}
-				if (key.KeyChar == 's')
-				{
-					await server.TestGamePlay();
-				}
-				if (key.KeyChar == 'd')
-				{
-					await server.TestGameReset();
+					await server.Connect(ip, port, clientCount);
 				}
 			}
 		}

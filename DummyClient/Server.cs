@@ -37,96 +37,24 @@ internal class Server : NetworkService
 		Console.WriteLine($"클라 연결 {clientCount}개");
 	}
 
-	public async Task TestLogin()
+	public void StartSendPacket(int sessionID)
 	{
-		var clientCount = _sessionIDs.Count;
-
-		var tasks = new Task[clientCount];
-
-		for (int i = 0; i < clientCount; i++)
-		{
-			var sessionID = _sessionIDs[i];
-			tasks[i] = Task.Run(() =>
-			{
-				var packet = new LoginReq();
-				packet.Name = $"IAM{sessionID}";
-				Send(sessionID, packet);
-			});
-		}
-		await Task.WhenAll(tasks);
-		Console.WriteLine($"로그인 요청 {clientCount}개");
-	}
-
-	public async Task TestGamePlay()
-	{
-		var clientCount = _sessionIDs.Count;
-
-		var tasks = new Task[clientCount];
-
-		var rand = new Random();
-
-		for (int i = 0; i < clientCount; i++)
-		{
-			var sessionID = _sessionIDs[i];
-
-			var flag = sessionID % 3 == 0;
-			var maxSize = sessionID % 2 == 0 ? 10 : 17;
-			tasks[i] = Task.Run(() =>
-			{
-				if (flag)
-				{
-					var packet = new SetFlagReq();
-					packet.row = rand.Next(0, maxSize);
-					packet.col = rand.Next(0, maxSize);
-					packet.flag = true;
-					Send(sessionID, packet);
-				}
-				else
-				{
-					var packet = new OpenCellReq();
-					packet.row = rand.Next(0, maxSize);
-					packet.col = rand.Next(0, maxSize);
-					Send(sessionID, packet);
-				}
-			});
-		}
-		await Task.WhenAll(tasks);
-		Console.WriteLine($"오픈/플래그 요청 {clientCount}개");
-	}
-
-	public async Task TestGameReset()
-	{
-		var clientCount = _sessionIDs.Count;
-		var tasks = new Task[clientCount];
-		var rand = new Random();
-
-		for (int i = 0; i < clientCount; i++)
-		{
-			var sessionID = _sessionIDs[i];
-
-			tasks[i] = Task.Run(() =>
-			{
-				var packet = new GameResetReq();
-				Send(sessionID, packet);
-			});
-		}
-		await Task.WhenAll(tasks);
-		Console.WriteLine($"리셋 요청 {clientCount}개");
+		_packetHandler.Handler((ushort)PACKET_ID.Connected, sessionID, null);
 	}
 
 	protected override void OnConnected(int sessionID)
 	{
 		Console.WriteLine($"OnConnected - {sessionID}");
+
 		_sessionIDs.Add(sessionID);
+		StartSendPacket(sessionID);
 	}
 
 	protected override void OnDisconnected(int sessionID)
 	{
 		Console.WriteLine($"OnDisconnected - {sessionID}");
-		if ( _sessionIDs.Contains(sessionID) )
-		{
-			_sessionIDs.Remove(sessionID);
-		}
+
+		_sessionIDs.Remove(sessionID);
 	}
 
 	protected override void OnReceiveData(int sessionID, ArraySegment<byte> data)

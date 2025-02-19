@@ -9,6 +9,9 @@ internal class PacketHandler
 
 	private Server _server;
 
+	private Dictionary<ROOM_LEVEL, GameRoomInfo> _gameInfo = new();
+	private object _lock = new object();
+
 	public void Init(Server server)
 	{
 		_server = server;
@@ -64,8 +67,9 @@ internal class PacketHandler
 
 		Console.WriteLine($"로그인 성공 : {sessionID}");
 
-		var level = sessionID % 2 == 0 ? ROOM_LEVEL.EASY : ROOM_LEVEL.NORMAL;
-		var packet = new JoinRoomrReq();
+		var level = GetRoomLevel(sessionID);
+
+		var packet = new JoinRoomReq();
 		packet.RoomLevel = level;
 		_server.Send(sessionID, packet);
 	}
@@ -85,9 +89,19 @@ internal class PacketHandler
 		}
 		Console.WriteLine($"방 참가 성공 : {sessionID}");
 
-		var level = sessionID % 2 == 0 ? ROOM_LEVEL.EASY : ROOM_LEVEL.NORMAL;
-		Console.WriteLine($"{level} 방 인원 : {res.Players.Count}");
+		var level = GetRoomLevel(sessionID);
+
+		lock (_lock)
+		{
+			if (!_gameInfo.ContainsKey(level))
+			{
+				_gameInfo.Add(level, new GameRoomInfo(res.RoomInfo.BoardSize, res.RoomInfo.Board, res.RoomInfo.GameOver, res.RoomInfo.Win));
+			}
+		}
+
+		_ = RandomGamePacket(sessionID);
 	}
+
 
 	private void OnLeaveRoomRes(int sessionID, ArraySegment<byte> data)
 	{
@@ -114,10 +128,23 @@ internal class PacketHandler
 		if (res.ErrorCode != ERROR_CODE.OK)
 		{
 			Console.WriteLine($"오픈 실패 : {sessionID} - {res.ErrorCode}");
-			return;
+		}
+		else
+		{
+			Console.WriteLine($"오픈 성공 {sessionID} - ({res.OpenCells.Count})");
+			var gameInfo = GetGameInfo(sessionID);
+			if (gameInfo == null)
+			{
+				return;
+			}
+
+			foreach (var cell in res.OpenCells)
+			{
+				gameInfo.SetCellState(cell.Row, cell.Col, cell.State);
+			}
 		}
 
-		Console.WriteLine($"오픈 성공 {sessionID} - ({res.OpenCells.Count})");
+		_ = RandomGamePacket(sessionID);
 	}
 
 	private void OnSetFlagRes(int sessionID, ArraySegment<byte> data)
@@ -131,10 +158,20 @@ internal class PacketHandler
 		if (res.ErrorCode != ERROR_CODE.OK)
 		{
 			Console.WriteLine($"플래그 실패 : {sessionID} - {res.ErrorCode}");
-			return;
 		}
+		else
+		{
+			Console.WriteLine($"플래그 성공 {sessionID} - ({res.RemainMineCount})");
 
-		Console.WriteLine($"플래그 성공 {sessionID} - ({res.RemainMineCount})");
+			var gameInfo = GetGameInfo(sessionID);
+			if (gameInfo == null)
+			{
+				return;
+			}
+			gameInfo.SetCellState(res.UpdateCell.Row, res.UpdateCell.Col, res.UpdateCell.State);
+		}
+		
+		_ = RandomGamePacket(sessionID);
 	}
 
 	private void OnResetRes(int sessionID, ArraySegment<byte> data)
@@ -145,10 +182,11 @@ internal class PacketHandler
 			return;
 		}
 
-		if (res.ErrorCode != ERROR_CODE.OK)
-		{
-			return;
-		}
+		//if (res.ErrorCode != ERROR_CODE.OK)
+		//{
+		//	return;
+		//}
+		_ = RandomGamePacket(sessionID);
 	}
 
 	private void OnUpdateCellNot(int sessionID, ArraySegment<byte> data)
@@ -167,6 +205,18 @@ internal class PacketHandler
 		{
 			return;
 		}
+
+		var gameInfo = GetGameInfo(sessionID);
+		if (gameInfo == null)
+		{
+			return;
+		}
+
+		if ( !gameInfo.GameOver)
+		{
+			gameInfo.GameOver = true;
+			gameInfo.Win = noti.Win;
+		}
 	}
 
 	private void OnResetNot(int sessionID, ArraySegment<byte> data)
@@ -177,6 +227,16 @@ internal class PacketHandler
 			return;
 		}
 
+		var gameInfo = GetGameInfo(sessionID);
+		if (gameInfo == null)
+		{
+			return;
+		}
+
+		if (gameInfo.GameOver)
+		{
+			gameInfo.Reset(noti.RoomInfo.Board);
+		}
 	}
 
 	private void OnJoinPlayerNot(int sessionID, ArraySegment<byte> data)
@@ -186,7 +246,7 @@ internal class PacketHandler
 		{
 			return;
 		}
-		var level = sessionID % 2 == 0 ? ROOM_LEVEL.EASY : ROOM_LEVEL.NORMAL;
+		var level = GetRoomLevel(sessionID);
 		//Console.WriteLine($"{level} 방에 참가한 유저 : {packet.JoinPlayer.Name}({packet.JoinPlayer.UID})");
 	}
 
@@ -197,8 +257,66 @@ internal class PacketHandler
 		{
 			return;
 		}
-		var level = sessionID % 2 == 0 ? ROOM_LEVEL.EASY : ROOM_LEVEL.NORMAL;
+		var level = GetRoomLevel(sessionID);
 		//Console.WriteLine($"{level} 방에 떠난 유저 : {packet.LeaveUID}");
+	}
+
+	private async Task RandomGamePacket(int sessionID)
+	{
+		var gameInfo = GetGameInfo(sessionID);
+		if (gameInfo == null)
+		{
+			return;
+		}
+
+		Random random = new Random();
+		await Task.Delay(random.Next(100, 3000));
+		
+		if ( gameInfo.GameOver )
+		{
+			var resetPacket = new GameResetReq();
+			_server.Send(sessionID, resetPacket);
+			return;
+		}
+		
+		int randValue = random.Next(0, 3);
+
+		if (randValue == 0)
+		{
+			var cell = gameInfo.GetRandomFlagCell();
+
+			var flagPacket = new SetFlagReq();
+			flagPacket.row = cell.row;
+			flagPacket.col = cell.col;
+			flagPacket.flag = !cell.currFlag;
+
+			_server.Send(sessionID, flagPacket);
+		}
+		else
+		{
+			var cell = gameInfo.GetRandomCloseCell();
+
+			var openPacket = new OpenCellReq();
+			openPacket.row = cell.row;
+			openPacket.col = cell.col;
+
+			_server.Send(sessionID, openPacket);
+		}
+	}
+
+	private ROOM_LEVEL GetRoomLevel(int sessionID)
+	{
+		return (sessionID & 1) == 0 ? ROOM_LEVEL.EASY : ROOM_LEVEL.NORMAL;
+	}
+
+	private GameRoomInfo GetGameInfo(int sessionID)
+	{
+		var level = GetRoomLevel(sessionID);
+		if (_gameInfo.ContainsKey(level))
+		{
+			return _gameInfo[level];
+		}
+		return null;
 	}
 
 }

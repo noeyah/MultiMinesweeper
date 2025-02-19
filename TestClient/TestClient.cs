@@ -124,7 +124,7 @@ namespace TestClient
 				return;
 			}
 
-			var packet = new JoinRoomrReq();
+			var packet = new JoinRoomReq();
 			packet.RoomLevel = selectedLevel;
 			_server.Send(packet);
 		}
