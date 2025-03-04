@@ -215,17 +215,9 @@ internal class Board
 		return board;
 	}
 
-	public List<GameCell> GetAllMineGameCell()
+	public IEnumerable<GameCell> GetAllMineGameCell()
 	{
-		var mineCells = new List<GameCell>();
-
-		foreach (var mine in _mines)
-		{
-			var cell = _grid[mine.row, mine.col];
-			mineCells.Add(cell.GetGameCell());
-		}
-
-		return mineCells;
+		return _mines.Select(v => _grid[v.row, v.col].GetGameCell());
 	}
 	#endregion
 

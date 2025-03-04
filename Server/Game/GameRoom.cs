@@ -241,7 +241,7 @@ internal class GameRoom : RoomWorker
 	}
 
 	// 지뢰 셀
-	public List<GameCell> GetAllMineGameCell()
+	public IEnumerable<GameCell> GetAllMineGameCell()
 	{
 		return _board.GetAllMineGameCell();
 	}

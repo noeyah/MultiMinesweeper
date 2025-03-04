@@ -10,8 +10,7 @@ internal class Program
 		var port = 7777;
 		var clientCount = 100;
 
-		Server server = new Server();
-		server.Init(200, 4096);
+		Server server = new Server(200, 4096);
 
 		while (true)
 		{

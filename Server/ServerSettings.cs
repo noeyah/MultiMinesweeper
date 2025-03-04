@@ -9,4 +9,6 @@ public class ServerSettings
 	public int PoolCount { get; set; }
 	public int BufferSize { get; set; }
 	public int TaskCount { get; set; }
+	public int MaxConnectCount { get; set; }
+	public int AcceptCount { get; set; }
 }

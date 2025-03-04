@@ -1,21 +1,24 @@
 ﻿using MessagePack;
 using Packet;
 using ServerCore;
+using System.Net.Sockets;
 
 namespace TestClient;
 
-internal class Server : NetworkService
+internal class Server
 {
 	private Connector _connector = new Connector();
+	private SessionManager _sessionManager;
+
 	private int _sessionID = 0;
 	private Session _session;
 
 	private PacketHandler _packetHandler = new PacketHandler();
 
-	public new void Init(int poolCount, int bufferSize)
+	public Server(int poolCount, int bufferSize)
 	{
-		base.Init(poolCount, bufferSize);
-		_connector.ConnectedHandler = Connected;
+		_sessionManager = new SessionManager(bufferSize);
+		_connector.ConnectedHandler = OnConnected;
 	}
 
 	public void SetPacketHandler(TestClient testClient)
@@ -29,22 +32,45 @@ internal class Server : NetworkService
 		_connector.Connect(ip, port);
 	}
 
-	protected override void OnConnected(int sessionID)
+	private void OnConnected(Socket socket)
+	{
+		Session session = _sessionManager.Create(socket);
+		var recvArgs = new SocketAsyncEventArgs();
+		recvArgs.UserToken = session;
+		recvArgs.Completed += IO_Completed;
+		session._recvArgs = recvArgs;
+
+		session.ReceiveCallback += OnReceiveData;
+		session.DisconnectedCallback += OnDisconnected;
+		session.ClosedCallback += OnClosed;
+
+		OnConnected(session.SessionID);
+
+		Task.Run(session.Start);
+	}
+
+	private void OnClosed(Session session, bool disconnect)
+	{
+		_sessionManager.Close(session.SessionID);
+		session._recvArgs.Dispose();
+	}
+
+	private void OnConnected(int sessionID)
 	{
 		Console.WriteLine("OnConnected");
 
 		_sessionID = sessionID;
-		_session = GetSession(sessionID);
+		_session = _sessionManager.GetSession(sessionID);
 
 		_packetHandler.EventHandler((ushort)PACKET_ID.Connected, null);
 	}
 
-	protected override void OnDisconnected(int sessionID)
+	private void OnDisconnected(int sessionID)
 	{
 		Console.WriteLine("OnDisconnected");
 	}
 
-	protected override void OnReceiveData(int sessionID, ArraySegment<byte> data)
+	private void OnReceiveData(int sessionID, ArraySegment<byte> data)
 	{
 		if (data.Array is null)
 		{
@@ -57,10 +83,6 @@ internal class Server : NetworkService
 		var dataSegment = new ArraySegment<byte>(data.Array, data.Offset + NetworkDefine.HEADER_SIZE, data.Count - NetworkDefine.HEADER_SIZE);
 
 		_packetHandler.EventHandler(packetID, dataSegment);
-	}
-
-	protected override void OnSendCompleted(int sessionID, byte[]? buffer, IList<ArraySegment<byte>>? bufferList)
-	{
 	}
 
 	public void Send<T>(T packet) where T : IPacket
@@ -79,4 +101,26 @@ internal class Server : NetworkService
 		_session.Send(buffer);
 	}
 
+	private void IO_Completed(object? sender, SocketAsyncEventArgs args)
+	{
+		switch (args.LastOperation)
+		{
+			case SocketAsyncOperation.Receive:
+				ProcessReceive(args);
+				break;
+			default:
+				throw new ArgumentException($"[ERROR][{nameof(IO_Completed)}] {args.LastOperation.ToString()}");
+		}
+	}
+
+	private void ProcessReceive(SocketAsyncEventArgs args)
+	{
+		var session = args.UserToken as Session;
+		if (session is null)
+		{
+			return;
+		}
+
+		session.OnRecvCompleted(args);
+	}
 }

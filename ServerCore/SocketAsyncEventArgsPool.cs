@@ -8,7 +8,7 @@ class SocketAsyncEventArgsPool
 	private ConcurrentQueue<SocketAsyncEventArgs> _argsPool = new ConcurrentQueue<SocketAsyncEventArgs>();
 	private EventHandler<SocketAsyncEventArgs> _completedHandler;
 
-	public SocketAsyncEventArgsPool(int poolCount, Action<object, SocketAsyncEventArgs> completedHandler)
+	public SocketAsyncEventArgsPool(int poolCount, Action<object?, SocketAsyncEventArgs> completedHandler)
 	{
 		_completedHandler = new EventHandler<SocketAsyncEventArgs>(completedHandler);
 
@@ -33,7 +33,14 @@ class SocketAsyncEventArgsPool
 
 	public void Return(SocketAsyncEventArgs args)
 	{
+		if ( args is null )
+		{
+			return;
+		}
+
 		args.UserToken = null;
+		args.SetBuffer(null, 0, 0);
+		args.BufferList = null;
 		_argsPool.Enqueue(args);
 	}
 }

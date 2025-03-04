@@ -26,7 +26,7 @@ public class Connector
 		}
 	}
 
-	private void OnConnectCompleted(object sender, SocketAsyncEventArgs args)
+	private void OnConnectCompleted(object? sender, SocketAsyncEventArgs args)
 	{
 		if (args.SocketError != SocketError.Success)
 		{

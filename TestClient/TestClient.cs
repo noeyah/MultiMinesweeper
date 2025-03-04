@@ -7,7 +7,7 @@ namespace TestClient
 	{
 		const int BOARD_SIZE = 16;
 
-		private Server _server = new Server();
+		private Server _server;
 		private Cell[,] _cells;
 		private int _boardSize = 0;
 		private int _totalMineCount = 0;
@@ -19,7 +19,7 @@ namespace TestClient
 			InitializeComponent();
 			InitBoard(BOARD_SIZE);
 
-			_server.Init(10, 4096);
+			_server = new Server(10, 4096);
 			_server.SetPacketHandler(this);
 		}
 

@@ -63,7 +63,7 @@ internal partial class PacketHandler
 
 				var gameOvetNot = new GameOverNot();
 				gameOvetNot.Win = room.Win;
-				gameOvetNot.MineCells = room.GetAllMineGameCell();
+				gameOvetNot.MineCells = room.GetAllMineGameCell().ToList();
 				Broadcast(gameOvetNot, room);
 			}
 		});

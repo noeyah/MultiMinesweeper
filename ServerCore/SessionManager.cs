@@ -1,8 +1,9 @@
 ﻿using System.Collections.Concurrent;
+using System.Net.Sockets;
 
 namespace ServerCore;
 
-class SessionManager
+public class SessionManager
 {
 	private static int _sessionID = 0;
 
@@ -17,18 +18,17 @@ class SessionManager
 
 	public Session GetSession(int sessionID)
 	{
-		if (_dicSession.TryGetValue(sessionID, out Session session))
+		if (_dicSession.TryGetValue(sessionID, out var session))
 		{
 			return session;
 		}
 		return null;
 	}
 
-	public Session Create()
+	public Session Create(Socket socket)
 	{
-		var session = new Session(_bufferSize);
 		var id = Interlocked.Increment(ref _sessionID);
-		session.SetID(id);
+		var session = new Session(id, socket, _bufferSize);
 
 		_dicSession.TryAdd(id, session);
 		return session;
@@ -36,7 +36,7 @@ class SessionManager
 
 	public void Close(int sessionID)
 	{
-		_dicSession.TryRemove(sessionID, out var session);
+		_dicSession.TryRemove(sessionID, out _);
 	}
 
 	public void CloseAll()
@@ -44,7 +44,7 @@ class SessionManager
 		foreach (var session in _dicSession.Values)
 		{
 			// 서버 종료로 인한 강제 끊기!
-			session.Close();
+			session.Close(false);
 		}
 	}
 }

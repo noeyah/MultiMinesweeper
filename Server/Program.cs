@@ -24,7 +24,7 @@ internal class Program
 			services.AddSingleton<PacketHandler>();
 			services.AddSingleton<PacketProcessor>();
 
-			services.AddHostedService<MainServer>();
+			services.AddHostedService<GameServer>();
 		});
 
 		var host = builder.Build();

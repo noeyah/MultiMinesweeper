@@ -6,7 +6,7 @@ namespace Server;
 
 internal class BroadcastWorker
 {
-	private readonly ConcurrentDictionary<int, List<ArraySegment<byte>>> _dicSend = new();
+	private readonly ConcurrentDictionary<int, List<byte[]>> _dicSend = new();
 
 	private object _lock = new object();
 	private bool _isProcessing = false;
@@ -19,11 +19,11 @@ internal class BroadcastWorker
 		_sessionFunc = getSessionFunc;
 	}
 
-	public void AddPacket(int sessionID, ArraySegment<byte> buffer)
+	public void AddPacket(int sessionID, byte[] buffer)
 	{
 		if (!_dicSend.ContainsKey(sessionID))
 		{
-			if (!_dicSend.TryAdd(sessionID, new List<ArraySegment<byte>>()))
+			if (!_dicSend.TryAdd(sessionID, new List<byte[]>()))
 			{
 				Console.WriteLine($"AddPacket 실패 : {sessionID}");
 				return;
@@ -65,7 +65,7 @@ internal class BroadcastWorker
 				}
 			}
 
-			var list = new List<(int sessionID, List<ArraySegment<byte>> bufferList)>();
+			var list = new List<(int sessionID, List<byte[]> bufferList)>();
 
 			foreach (var pair in _dicSend)
 			{
@@ -87,7 +87,7 @@ internal class BroadcastWorker
 				}
 			}
 
-			await Task.Delay(500, _cts.Token);
+			await Task.Delay(300, _cts.Token);
 		}
 	}
 

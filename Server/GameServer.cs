@@ -5,46 +5,52 @@ using ServerCore;
 
 namespace Server;
 
-internal class MainServer : NetworkService, IHostedService
+internal class GameServer : IHostedService
 {
-	private readonly Listener _listener = new Listener();
+	private readonly NetworkService _networkService;
 
 	private readonly ServerSettings _serverSettings;
 	private readonly RoomManager _roomManager;
-	private readonly UserManager _userManager;
-	private readonly SendWorker _sendWorker;
 	private readonly BroadcastWorker _broadcastWorker;
-	private readonly PacketHandler _packetHandler;
 	private readonly PacketProcessor _packetProcessor;
 
-	public MainServer(
+	public GameServer(
 		IOptions<ServerSettings> settings, 
 		RoomManager roomManager,
-		UserManager userManager,
 		SendWorker sendWorker, 
 		BroadcastWorker broadcastWorker,
-		PacketHandler packetHandler,
 		PacketProcessor packetProcessor) 
 	{
 		_serverSettings = settings.Value;
+
+		var serverConfig = new ServerConfig()
+		{
+			IP = _serverSettings.IP,
+			Port = _serverSettings.Port,
+			BackLog = _serverSettings.BackLog,
+			PoolCount = _serverSettings.PoolCount,
+			BufferSize = _serverSettings.BufferSize,
+			MaxConnectCount = 1000,
+			AcceptCount = 2,
+		};
+
+		_networkService = new NetworkService(serverConfig);
+
 		_roomManager = roomManager;
-		_userManager = userManager;
-		_sendWorker = sendWorker;
 		_broadcastWorker = broadcastWorker;
-		_packetHandler = packetHandler;
 		_packetProcessor = packetProcessor;
 
-		base.Init(_serverSettings.PoolCount, _serverSettings.BufferSize);
+		sendWorker.Init(_networkService.GetSession);
+		broadcastWorker.Init(_networkService.GetSession);
 
-		sendWorker.Init(GetSession);
-		broadcastWorker.Init(GetSession);
-
-		_listener.AcceptHandler = Connected;
+		_networkService.SessionReceiveDataCallback += OnReceiveData;
+		_networkService.SessionConnectedCallback += OnConnected;
+		_networkService.SessionDisconnectedCallback += OnDisconnected;
 	}
 
 	public void Start()
 	{
-		_listener.Start(_serverSettings.IP, _serverSettings.Port, _serverSettings.BackLog);
+		_networkService.Start();
 	}
 
 	public Task StartAsync(CancellationToken cancellationToken)
@@ -59,12 +65,12 @@ internal class MainServer : NetworkService, IHostedService
 		_packetProcessor.Stop();
 		_broadcastWorker.Stop();
 
-		ServerDown();	// 세션 다 끊음(콜백 다 무시)
+		_networkService.ServerDown();	// 세션 다 끊음(콜백 다 무시)
 
 		return Task.CompletedTask;
 	}
 
-	protected override void OnConnected(int sessionID)
+	private void OnConnected(int sessionID)
 	{
 		PacketData packetData = new PacketData();
 		packetData.SessionID = sessionID;
@@ -72,7 +78,7 @@ internal class MainServer : NetworkService, IHostedService
 		_packetProcessor.Receive(packetData);
 	}
 
-	protected override void OnDisconnected(int sessionID)
+	private void OnDisconnected(int sessionID)
 	{
 		PacketData packetData = new PacketData();
 		packetData.SessionID = sessionID;
@@ -80,7 +86,7 @@ internal class MainServer : NetworkService, IHostedService
 		_packetProcessor.Receive(packetData);
 	}
 
-	protected override void OnReceiveData(int sessionID, ArraySegment<byte> data)
+	private void OnReceiveData(int sessionID, ArraySegment<byte> data)
 	{
 		if (data.Array is null)
 		{
@@ -99,22 +105,6 @@ internal class MainServer : NetworkService, IHostedService
 		packetData.Body = dataSegment;
 
 		_packetProcessor.Receive(packetData);
-	}
-
-	protected override void OnSendCompleted(int sessionID, byte[]? buffer, IList<ArraySegment<byte>>? bufferList)
-	{
-		if ( buffer != null )
-		{
-			BufferPool.Return(new ArraySegment<byte>(buffer));
-		}
-
-		if (bufferList != null)
-		{
-			foreach (var segment in bufferList)
-			{
-				BufferPool.Return(segment);
-			}
-		}
 	}
 
 }

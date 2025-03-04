@@ -5,7 +5,7 @@ namespace Server;
 
 internal class SendWorker
 {
-	private readonly ConcurrentQueue<(int sessionID, ArraySegment<byte> buffer)> _sendQueue = new();
+	private readonly ConcurrentQueue<(int sessionID, byte[] buffer)> _sendQueue = new();
 
 	private object _lock = new object();
 	private bool _isProcessing = false;
@@ -17,7 +17,7 @@ internal class SendWorker
 		_sessionFunc = getSessionFunc;
 	}
 
-	public void Send(int sessionID, ArraySegment<byte> buffer)
+	public void Send(int sessionID, byte[] buffer)
 	{
 		_sendQueue.Enqueue((sessionID, buffer));
 

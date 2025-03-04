@@ -5,14 +5,18 @@ namespace ServerCore;
 
 public class Listener
 {
-	public Action<Socket> AcceptHandler;
-
+	private Action<Socket> AcceptHandler;
 	private Socket _listenSocket;
+	private List<SocketAsyncEventArgs> _acceptArgsList = new();
 
-	public void Start(string ip, int port, int backLog)
+	public Listener(Action<Socket> acceptHandler)
+	{
+		AcceptHandler = acceptHandler;
+	}
+
+	public void Start(string ip, int port, int backLog, int acceptCount)
 	{
 		IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(ip), port);
-
 		_listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
 		try
@@ -20,15 +24,15 @@ public class Listener
 			_listenSocket.Bind(endPoint);
 			_listenSocket.Listen(backLog);
 
-			var eventHandler = new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
-			for (int i = 0; i < 5; i++)
+			for (int i = 0; i < acceptCount; i++)
 			{
-				SocketAsyncEventArgs acceptEventArgs = new SocketAsyncEventArgs();
-				acceptEventArgs.Completed += eventHandler;
+				var acceptArgs = new SocketAsyncEventArgs();
+				acceptArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
+				_acceptArgsList.Add(acceptArgs);
 
-				if (_listenSocket.AcceptAsync(acceptEventArgs) == false)
+				if (_listenSocket.AcceptAsync(acceptArgs) == false)
 				{
-					OnAcceptCompleted(_listenSocket, acceptEventArgs);
+					OnAcceptCompleted(null, acceptArgs);
 				}
 			}
 		}
@@ -38,7 +42,31 @@ public class Listener
 		}
 	}
 
-	private void OnAcceptCompleted(object sender, SocketAsyncEventArgs args)
+	public void Stop()
+	{
+		if ( _listenSocket == null )
+		{
+			return;
+		}
+
+		foreach (var args in _acceptArgsList)
+		{
+			args.Completed -= new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
+			args.Dispose();
+		}
+		_acceptArgsList.Clear();
+
+		try
+		{
+			_listenSocket.Close();
+		}
+		finally
+		{
+			_listenSocket = null;
+		}
+	}
+
+	private void OnAcceptCompleted(object? sender, SocketAsyncEventArgs args)
 	{
 		if (args.SocketError != SocketError.Success)
 		{
@@ -47,27 +75,26 @@ public class Listener
 		else
 		{
 			var socket = args.AcceptSocket;
-			AcceptHandler(socket);
+			if (socket != null)
+			{
+				AcceptHandler(socket);
+			}
 		}
 
-		// next accept
 		args.AcceptSocket = null;
-		bool acceptPending = true;
 
 		try
 		{
-			acceptPending = _listenSocket.AcceptAsync(args);
+			if (_listenSocket.AcceptAsync(args) == false)
+			{
+				OnAcceptCompleted(null, args);
+			}
 		}
 		catch (Exception ex)
 		{
-			Console.WriteLine(ex.ToString());
-			//acceptPeding = true;
+			Console.WriteLine($"[{nameof(Listener)}] {ex}");
 			return;
 		}
-
-		if (acceptPending == false)
-		{
-			OnAcceptCompleted(_listenSocket, args);
-		}
 	}
+
 }

@@ -110,12 +110,11 @@ internal partial class PacketHandler
 		}
 	}
 
-	private ArraySegment<byte> MakeSendData(ushort packetID, byte[] data)
+	private byte[] MakeSendData(ushort packetID, byte[] data)
 	{
 		var totalSize = data.Length + NetworkDefine.HEADER_SIZE;
 
-		// OnSendCompleted에서 BufferPool.Return
-		var buffer = BufferPool.Rent(totalSize);
+		var buffer = new byte[totalSize];
 		var span = buffer.AsSpan();
 
 		BitConverter.TryWriteBytes(span.Slice(0, NetworkDefine.HEADER_DATA_SIZE), (ushort)totalSize);

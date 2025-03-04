@@ -2,24 +2,29 @@
 
 namespace ServerCore;
 
-public abstract class NetworkService
+public class NetworkService
 {
-	private SessionManager _sessionManager;
+	public event SessionReceiveData SessionReceiveDataCallback;
+	public event SessionConnected SessionConnectedCallback;
+	public event SessionDisconnected SessionDisconnectedCallback;
 
-	private SocketAsyncEventArgsPool _argsPool;
+	private readonly SessionManager _sessionManager;
+	private readonly SocketAsyncEventArgsPool _receiveArgsPool;
+	private readonly Listener _listener;
+	private readonly ServerConfig _config;
 
-	#region handler
-	protected abstract void OnReceiveData(int sessionID, ArraySegment<byte> data);
-	protected abstract void OnSendCompleted(int sessionID, byte[]? buffer, IList<ArraySegment<byte>>? bufferList);
-	protected abstract void OnConnected(int sessionID);
-	protected abstract void OnDisconnected(int sessionID);
-	#endregion
-
-
-	protected virtual void Init(int poolCount, int bufferSize)
+	public NetworkService(ServerConfig config)
 	{
-		_sessionManager = new SessionManager(bufferSize);
-		_argsPool = new SocketAsyncEventArgsPool(poolCount, IO_Completed);
+		_config = config;
+
+		_sessionManager = new SessionManager(config.BufferSize);
+		_receiveArgsPool = new SocketAsyncEventArgsPool(config.PoolCount, IO_Completed);
+		_listener = new Listener(SessionConnected);
+	}
+
+	public void Start()
+	{
+		_listener.Start(_config.IP, _config.Port, _config.BackLog, _config.AcceptCount);
 	}
 
 	public Session GetSession(int sessionID)
@@ -32,48 +37,46 @@ public abstract class NetworkService
 		_sessionManager.CloseAll();
 	}
 
-	#region session event
-
-	protected void Connected(Socket socket)
+	private void SessionConnected(Socket socket)
 	{
-		Session session = _sessionManager.Create();
+		var recvArgs = _receiveArgsPool.Pop();
+		if (recvArgs == null)
+		{
+			return;
+		}
 
-		var recvArgs = _argsPool.Pop();
-		var sendArgs = _argsPool.Pop();
-
+		Session session = _sessionManager.Create(socket);
 		recvArgs.UserToken = session;
-		sendArgs.UserToken = session;
+		session._recvArgs = recvArgs;
 
-		session.Set(socket, recvArgs, sendArgs);
-		session.Received = OnReceiveData;
-		session.SendCompleted = OnSendCompleted;
-		session.Disconnected = OnDisconnected;
-		session.Closed = OnClosed;
+		session.ReceiveCallback += SessionReceiveDataCallback;
+		session.DisconnectedCallback += SessionDisconnectedCallback;
+		session.ClosedCallback += SessionClosed;
 
-		OnConnected(session.SessionID);
+		SessionConnectedCallback(session.SessionID);
 
-		session.Start();
+		Task.Run(session.Start);
 	}
 
-	private void OnClosed(int sessionID, SocketAsyncEventArgs recvArgs, SocketAsyncEventArgs sendArgs)
+	private void SessionClosed(Session session, bool disconnect)
 	{
-		_argsPool.Return(recvArgs);
-		_argsPool.Return(sendArgs);
-		_sessionManager.Close(sessionID);
+		_receiveArgsPool.Return(session._recvArgs);
+
+		if (disconnect)
+		{
+			_sessionManager.Close(session.SessionID);
+		}
 	}
 
-	private void IO_Completed(object sender, SocketAsyncEventArgs args)
+	private void IO_Completed(object? sender, SocketAsyncEventArgs args)
 	{
 		switch (args.LastOperation)
 		{
 			case SocketAsyncOperation.Receive:
 				ProcessReceive(args);
 				break;
-			case SocketAsyncOperation.Send:
-				ProcessSend(args);
-				break;
 			default:
-				throw new ArgumentException($"[ERROR] {nameof(IO_Completed)} - {args.LastOperation.ToString()}");
+				throw new ArgumentException($"[ERROR][{nameof(IO_Completed)}] {args.LastOperation.ToString()}");
 		}
 	}
 
@@ -88,16 +91,4 @@ public abstract class NetworkService
 		session.OnRecvCompleted(args);
 	}
 
-	private void ProcessSend(SocketAsyncEventArgs args)
-	{
-		var session = args.UserToken as Session;
-		if (session is null)
-		{
-			return;
-		}
-
-		session.OnSendCompleted(args);
-	}
-
-	#endregion
 }

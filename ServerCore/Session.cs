@@ -1,160 +1,156 @@
 ﻿using System.Net.Sockets;
 
 namespace ServerCore;
+
+public delegate void SessionReceiveData(int sessionID, ArraySegment<byte> data);
+public delegate void SessionConnected(int sessionID);
+public delegate void SessionDisconnected(int sessionID);
+public delegate void SessionClosed(Session session, bool disconnect);
+
+internal enum SESSION_STATE
+{
+	NONE,
+	SENDING,
+	RESERVE_DISCONNECT,
+	CLOSED,
+}
+
 public class Session
 {
-	public delegate void ReceiveHandler(int sessionID, ArraySegment<byte> data);
-	public delegate void SendCompletedHandler(int sessionID, byte[]? buffer, IList<ArraySegment<byte>>? bufferList);
-	public delegate void DisconnectedHandler(int sessionID);
-	public delegate void ClosedHandler(int sessionID, SocketAsyncEventArgs recvArgs, SocketAsyncEventArgs sendArgs);
-
-	public ReceiveHandler Received;
-	public SendCompletedHandler SendCompleted;
-	public DisconnectedHandler Disconnected;
-	public ClosedHandler Closed;
+	public event SessionReceiveData ReceiveCallback;
+	public event SessionDisconnected DisconnectedCallback;
+	public event SessionClosed ClosedCallback;
 
 	private int _sessionID;
 	private Socket _socket;
 
-	private int _disconnected;
-
 	private object _lock = new object();
+	private int _state = (int)SESSION_STATE.NONE;
 
-	private SocketAsyncEventArgs _recvArgs;
-	private SocketAsyncEventArgs _sendArgs;
-
+	public SocketAsyncEventArgs _recvArgs;
 	private RecvBuffer _recvBuffer;
 
-	private Queue<ArraySegment<byte>> _sendQueue = new Queue<ArraySegment<byte>>();
-	private List<ArraySegment<byte>> _pendingList = new List<ArraySegment<byte>>();
+	private SocketAsyncEventArgs _sendArgs = new SocketAsyncEventArgs();
+	private SendQueue _sendQueue = new();
 
 	public int SessionID => _sessionID;
 
-	public Session(int bufferSize)
+	public Session(int sessionID, Socket socket, int bufferSize)
 	{
-		_recvBuffer = new RecvBuffer(bufferSize * 4);
-		_disconnected = 0;
-	}
-
-	public void SetID(int sessionID)
-	{
-		_sessionID = sessionID; 
-	}
-
-	public void Set(Socket socket, SocketAsyncEventArgs recvArgs, SocketAsyncEventArgs sendArgs)
-	{
+		_sessionID = sessionID;
 		_socket = socket;
-		_recvArgs = recvArgs;
-		_sendArgs = sendArgs;
+
+		_recvBuffer = new RecvBuffer(bufferSize * 4);
 	}
 
 	public void Start()
 	{
 		StartRecv(_recvArgs);
 	}
-
+	
 	public void Disconnect()
 	{
-		if ( Interlocked.Exchange(ref _disconnected, 1) == 1 )
+		int oldState = Interlocked.CompareExchange(ref _state, (int)SESSION_STATE.RESERVE_DISCONNECT, (int)SESSION_STATE.SENDING);
+		if (oldState == (int)SESSION_STATE.SENDING)
+		{
+			// Send 중이면 Send 끝나고 Disconnect 실행
+			return;
+		}
+
+		if (oldState == (int)SESSION_STATE.CLOSED)
+		{
+			return;
+		}
+		
+		Close(true);
+	}
+
+	public void Close(bool disconnect)
+	{
+		if (Interlocked.Exchange(ref _state, (int)SESSION_STATE.CLOSED) == (int)SESSION_STATE.CLOSED)
 		{
 			return;
 		}
 
-		Disconnected(_sessionID);
+		DisconnectedCallback?.Invoke(_sessionID);
 
-		_socket.Shutdown(SocketShutdown.Both);
-		_socket.Close();
+		_sendQueue.Clear();
 
-		lock (_lock)
+		try
 		{
-			_sendQueue.Clear();
-			_pendingList.Clear();
+			_socket.Shutdown(SocketShutdown.Both);
+		}
+		catch 
+		{ 
 		}
 
-		var recvArgs = _recvArgs;
-		var sendArgs = _sendArgs;
+		_socket.Close();
+		_sendArgs?.Dispose();
+
+		ClosedCallback?.Invoke(this, disconnect);
 
 		_socket = null;
 		_recvArgs = null;
 		_sendArgs = null;
-
-		Closed(_sessionID, recvArgs, sendArgs);
 	}
 
-	public void Close()
+	public void Send(byte[] buffer)
 	{
-		// 강종
-		_socket.Shutdown(SocketShutdown.Both);
-		_socket.Close();
-	}
+		_sendQueue.Add(buffer);
 
-	public void Send(ArraySegment<byte> buffer)
-	{
-		lock (_lock)
+		if (Interlocked.CompareExchange(ref _state, (int)SESSION_STATE.SENDING, (int)SESSION_STATE.NONE) == (int)SESSION_STATE.NONE)
 		{
-			_sendQueue.Enqueue(buffer);
-			if ( _pendingList.Count == 0 )
-			{
-				StartSend();
-			}
+			StartSend();
 		}
 	}
-	public void Send(List<ArraySegment<byte>> bufferList)
+
+	public void Send(List<byte[]> bufferList)
 	{
 		if (bufferList.Count == 0)
 		{
 			return;
 		}
 
-		lock (_lock)
-		{
-			foreach (var buffer in bufferList)
-			{
-				_sendQueue.Enqueue(buffer);
-			}
+		_sendQueue.Add(bufferList);
 
-			if (_pendingList.Count == 0)
-			{
-				StartSend();
-			}
+		if (Interlocked.CompareExchange(ref _state, (int)SESSION_STATE.SENDING, (int)SESSION_STATE.NONE) == (int)SESSION_STATE.NONE)
+		{
+			StartSend();
 		}
 	}
 
 	private void StartSend()
 	{
-		if (_disconnected == 1 || _sendQueue.Count == 0)
+		if (_state == (int)SESSION_STATE.CLOSED)
 		{
 			return;
 		}
 
-		while (_sendQueue.Count > 0)
-		{
-			var buffer = _sendQueue.Dequeue();
-			_pendingList.Add(buffer);
-		}
+		var list = _sendQueue.GetSendQueue();
 
-		if ( _pendingList.Count == 1 )
+		if (list.Count == 1 )
 		{
-			_sendArgs.SetBuffer(_pendingList[0].Array, _pendingList[0].Offset, _pendingList[0].Count);
+			_sendArgs.SetBuffer(list[0].Array, list[0].Offset, list[0].Count);
 			_sendArgs.BufferList = null;
 		}
 		else
 		{
 			_sendArgs.SetBuffer(null, 0, 0);
-			_sendArgs.BufferList = _pendingList;
+			_sendArgs.BufferList = list;
 		}
 
 		try
 		{
-			bool pending = _socket.SendAsync(_sendArgs);
-			if (!pending)
+			if (!_socket.SendAsync(_sendArgs))
 			{
 				OnSendCompleted(_sendArgs);
 			}
 		}
 		catch (Exception ex)
 		{
-			Console.WriteLine($"{nameof(StartSend)} - {ex.Message}");
+			Console.WriteLine($"[{nameof(StartSend)}] {ex.Message}");
+			Interlocked.CompareExchange(ref _state, (int)SESSION_STATE.NONE, (int)SESSION_STATE.SENDING);
+			Disconnect();
 		}
 	}
 
@@ -166,20 +162,33 @@ public class Session
 			{
 				try
 				{
-					SendCompleted(SessionID, _sendArgs.Buffer, _sendArgs.BufferList);
-					
-					_sendArgs.BufferList = null;
-					_sendArgs.SetBuffer(null, 0, 0);
-					_pendingList.Clear();
+					if (args.BufferList != null)
+					{
+						_sendQueue.Remove(args.BufferList.Count);
+						args.BufferList = null;
+					}
+					else if (args.Buffer != null)
+					{
+						_sendQueue.Remove(1);
+						args.SetBuffer(null, 0, 0);
+					}
 
-					if ( _sendQueue.Count > 0 )
+					if (_sendQueue.Count > 0 )
 					{
 						StartSend();
+						return;
+					}
+
+					Interlocked.CompareExchange(ref _state, (int)SESSION_STATE.NONE, (int)SESSION_STATE.SENDING);
+					if ( _state == (int)SESSION_STATE.RESERVE_DISCONNECT )
+					{
+						Disconnect();
 					}
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine($"{nameof(OnSendCompleted)} - {ex.Message}");
+					Console.WriteLine($"[{nameof(OnSendCompleted)}] {ex.Message}");
+					Disconnect();
 				}
 			}
 			else
@@ -191,7 +200,7 @@ public class Session
 
 	public void StartRecv(SocketAsyncEventArgs args)
 	{
-		if ( _disconnected == 1)
+		if (_state == (int)SESSION_STATE.CLOSED)
 		{
 			return;
 		}
@@ -255,7 +264,7 @@ public class Session
 				break;
 			}
 
-			Received(SessionID, new ArraySegment<byte>(buffer.Array, buffer.Offset, dataSize));
+			ReceiveCallback(SessionID, new ArraySegment<byte>(buffer.Array, buffer.Offset, dataSize));
 
 			processLength += dataSize;
 			buffer = new ArraySegment<byte>(buffer.Array, buffer.Offset + dataSize, buffer.Count - dataSize);
@@ -263,4 +272,5 @@ public class Session
 
 		return processLength;
 	}
+
 }
