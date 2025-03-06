@@ -41,7 +41,7 @@ IOCP 기반 소켓 통신 라이브러리부터 게임 서버까지 구현한 �
 - DummyClient : 서버 부하 테스트용 클라이언트
 
 
-![Image](https://github.com/user-attachments/assets/a005fde2-b89d-4920-82e9-adc1233d70d9)
+![Image](https://github.com/user-attachments/assets/969652a3-6121-43c8-804f-53c06bc73f7f)
 
 
 
