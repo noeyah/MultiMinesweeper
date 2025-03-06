@@ -30,8 +30,8 @@ internal class GameServer : IHostedService
 			BackLog = _serverSettings.BackLog,
 			PoolCount = _serverSettings.PoolCount,
 			BufferSize = _serverSettings.BufferSize,
-			MaxConnectCount = 1000,
-			AcceptCount = 2,
+			MaxConnectCount = _serverSettings.MaxConnectCount,
+			AcceptCount = _serverSettings.AcceptCount,
 		};
 
 		_networkService = new NetworkService(serverConfig);

@@ -154,7 +154,7 @@ public class Session
 		}
 	}
 
-	public void OnSendCompleted(SocketAsyncEventArgs args)
+	private void OnSendCompleted(SocketAsyncEventArgs args)
 	{
 		lock (_lock)
 		{
@@ -198,7 +198,7 @@ public class Session
 		}
 	}
 
-	public void StartRecv(SocketAsyncEventArgs args)
+	private void StartRecv(SocketAsyncEventArgs args)
 	{
 		if (_state == (int)SESSION_STATE.CLOSED)
 		{
