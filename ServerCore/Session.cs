@@ -94,7 +94,7 @@ public class Session
 		_sendArgs = null;
 	}
 
-	public void Send(byte[] buffer)
+	public void SendAsync(byte[] buffer)
 	{
 		_sendQueue.Add(buffer);
 
@@ -104,7 +104,7 @@ public class Session
 		}
 	}
 
-	public void Send(List<byte[]> bufferList)
+	public void SendAsync(List<byte[]> bufferList)
 	{
 		if (bufferList.Count == 0)
 		{

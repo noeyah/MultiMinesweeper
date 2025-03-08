@@ -110,7 +110,7 @@ internal class Server
 		data.AsSpan().CopyTo(span.Slice(NetworkDefine.HEADER_SIZE));
 
 		var session = _sessionManager.GetSession(sessionID);
-		session.Send(buffer);
+		session.SendAsync(buffer);
 	}
 
 	private void IO_Completed(object? sender, SocketAsyncEventArgs args)

@@ -38,7 +38,7 @@ internal class SendWorker
 			var session = _sessionFunc(data.sessionID);
 			if (session != null)
 			{
-				session.Send(data.buffer);
+				session.SendAsync(data.buffer);
 			}
 		}
 

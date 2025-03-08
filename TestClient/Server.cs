@@ -98,7 +98,7 @@ internal class Server
 		BitConverter.TryWriteBytes(span.Slice(NetworkDefine.HEADER_DATA_SIZE, NetworkDefine.HEADER_PACKET_ID_SIZE), (ushort)packet.PacketID);
 		data.AsSpan().CopyTo(span.Slice(NetworkDefine.HEADER_SIZE));
 
-		_session.Send(buffer);
+		_session.SendAsync(buffer);
 	}
 
 	private void IO_Completed(object? sender, SocketAsyncEventArgs args)

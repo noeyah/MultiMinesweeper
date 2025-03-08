@@ -82,7 +82,7 @@ internal class BroadcastWorker
 					var session = _sessionFunc(sessionID);
 					if (session != null)
 					{
-						session.Send(bufferList);
+						session.SendAsync(bufferList);
 					}
 				}
 			}
